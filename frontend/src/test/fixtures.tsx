@@ -7,7 +7,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { vi } from 'vitest'
 import { queryKeys } from '../hooks/queries'
-import type { BottleneckList, Exposure, FloodSummary, FloodTimeline, FloodTimelineEntry, KpiResponse, RecommendationList } from '../types/api'
+import type { BottleneckList, BottleneckTimeline, Comparison, Exposure, FloodSummary, FloodTimeline, FloodTimelineEntry, KpiResponse, RecommendationList, SimulationStatus } from '../types/api'
 import type { DigitalTwinController } from '../cesium/DigitalTwinController'
 import { ControllerContext } from '../components/viewer/controllerContext'
 
@@ -153,6 +153,7 @@ export function fakeController() {
     flyToLonLats: vi.fn(() => true),
     focusOn: vi.fn(() => true),
     clearSelection: vi.fn(),
+    resetDemo: vi.fn(),
   }
 }
 
@@ -163,3 +164,58 @@ export function wrap(ui: ReactNode, client: QueryClient, controller: unknown = n
     </QueryClientProvider>
   )
 }
+
+export const BASE = 'test-sim-0000'
+export const WHATIF = 'test-sim-1250'
+
+export function status(simulationId: string, overrides: Partial<SimulationStatus> = {}): SimulationStatus {
+  return {
+    simulationId, scenarioId: 'michaung-2023', modelVersion: 'm', processingVersion: 'p', applicationVersion: 'a', status: 'COMPLETED', stage: 'COMPLETE', progress: 100,
+    progressBasis: 'stage', createdAt: '2026-09-14T01:00:00Z', startedAt: '2026-09-14T01:00:00Z', completedAt: '2026-09-14T01:01:00Z', error: null,
+    parameters: {}, executionMode: 'swmm', demoId: null, scenarioRun: null, ...overrides,
+  }
+}
+
+export const bottleneckTimeline = {
+  simulationId: SIM,
+  bottleneckTimelineVersion: 'bottleneck-timeline-v1',
+  bottleneckAnalysisVersion: 'bottleneck-analysis-v1',
+  intervalMinutes: 30,
+  definition: {},
+  links: {},
+  summary: { timestampsWithActiveBottlenecks: 1, firstActiveTime: null, lastActiveTime: null, perLink: {} },
+  entries: timeline.entries.map((e) => ({
+    index: e.index,
+    time: e.time,
+    activeCount: e.index === 2 ? 1 : 0,
+    highestSeverity: e.index === 2 ? 'HIGH' : null,
+    active: e.index === 2 ? [{ linkId: 'C901', sourceObjectId: 9001, severity: 'HIGH', eventSeverity: 'HIGH', criteria: { full: true, aboveFullFlowCapacity: true, connectedNodeFlooding: true }, flowCms: 0.5, fullFlowCapacityCms: 0.24, utilization: 2.2, fillFraction: 1, depthM: 0.78, velocityMps: 0.86, floodingNodeIds: ['J1'] }] : [],
+    mostLoaded: e.index === 2 ? { linkId: 'C901', utilization: 2.2, flowCms: 0.5, fullFlowCapacityCms: 0.24, isPotentialBottleneck: true } : null,
+  })),
+} as unknown as BottleneckTimeline
+
+export const comparison = {
+  comparisonId: `${BASE}__${WHATIF}`,
+  scenarioAnalysisVersion: 'scenario-analysis-v1',
+  terminology: 'What-if',
+  baseline: { simulationId: BASE, scenarioId: 'michaung-2023', modelVersion: 'm', rainfallMultiplier: 1, executionMode: 'precomputed-demo', label: 'Baseline' },
+  scenario: { simulationId: WHATIF, scenarioId: 'michaung-2023', modelVersion: 'm', rainfallMultiplier: 1.25, executionMode: 'swmm', label: '1.25x' },
+  metrics: [{ key: 'peakConcurrentFloodingNodes', label: 'Peak flooding nodes', unit: 'count', source: 'model-derived', baseline: 19, scenario: 21, absoluteChange: 2, percentChange: 10.5 }],
+  floodInfluence: {
+    definition: 'd',
+    event: { both: ['J1'], scenarioOnly: ['J9'], baselineOnly: [] },
+    peak: { index: 2, both: ['J1'], scenarioOnly: ['J9'], baselineOnly: [] },
+    timeline: [],
+    nodeMaximumOverflowRates: [],
+    sharedScale: { note: 'Overflow classes are NOT a shared scale.' },
+  },
+  bottlenecks: {
+    new: [{ linkId: 'C903', sourceObjectId: 9003, scenarioSeverity: 'HIGH' }],
+    persisting: [{ linkId: 'C901', sourceObjectId: 9001, baselineSeverity: 'HIGH', scenarioSeverity: 'HIGH', change: 'unchanged' }],
+    notFlaggedInScenario: [],
+  },
+  exposure: { buildingsEvent: { baseline: 948, scenario: 964, additionalInScenario: 16, notAssociatedInScenario: 0 }, buildingsPeak: { baseline: 783, scenario: 964 }, roadAreaEventM2: { baseline: 1, scenario: 2 }, linkedToComponentsWithoutOutfall: { baseline: 1, scenario: 1 }, terminology: 'Model-derived exposure; not damage.' },
+  recommendations: { new: [{ id: 'rec-r1-C903', rule: 'R1', title: 'Assess drainage capacity of segment C903', scenarioPriority: 'HIGH' }], persisting: [], notTriggeredInScenario: [], note: 'independent' },
+  statements: ['C901 remains a high-concern potential bottleneck under both runs.'],
+  limitations: [],
+} as unknown as Comparison

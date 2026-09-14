@@ -107,6 +107,11 @@ class ScenarioService:
                 "bboxOrder": "minLon,minLat,maxLon,maxLat (EPSG:4326)",
             },
             "compatibleModelVersions": sorted(scenario.compatible_models),
+            "whatIf": (
+                {**scenario.what_if, "scenarioAnalysisVersion": self._settings.scenario_analysis_version, "terminology": "What-if rainfall sensitivity scenario (not a forecast, warning or climate projection)."}
+                if scenario.what_if
+                else None
+            ),
             "provenance": {
                 "file": rainfall_path_for(scenario, self._settings.raw_dir).name,
                 "sha256": scenario.rainfall["sha256"],

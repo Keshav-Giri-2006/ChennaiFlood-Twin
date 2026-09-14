@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { friendlyErrorMessage } from '../../api/client'
 import { useScenario, useScenarios } from '../../hooks/queries'
 import { useSimulationStore } from '../../state/simulationStore'
+import type { WhatIfSpec } from '../../types/api'
 import { formatNumber, formatTimestampUtc } from '../../utils/format'
 import { Panel } from '../common/Panel'
 
@@ -31,6 +32,7 @@ export function ScenarioPanel() {
           </select>
         </label>
       )}
+      {detail.data?.whatIf && <RainfallMultiplierField spec={detail.data.whatIf} />}
       {detail.data && (
         <dl className="kv">
           <dt>Event</dt>
@@ -55,5 +57,28 @@ export function ScenarioPanel() {
       )}
       {detail.data?.limitations.length ? <p className="note">{detail.data.limitations[0]}</p> : null}
     </Panel>
+  )
+}
+
+/** What-if rainfall sensitivity selection (backend-registered presets and range). */
+function RainfallMultiplierField({ spec }: { spec: WhatIfSpec }) {
+  const value = useSimulationStore((s) => s.rainfallMultiplier)
+  const setValue = useSimulationStore((s) => s.setRainfallMultiplier)
+  return (
+    <div className="what-if">
+      <label className="field">
+        <span>{spec.label}</span>
+        <select value={value} onChange={(e) => setValue(Number(e.target.value))} aria-describedby="what-if-note">
+          {spec.presets.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+      </label>
+      <p id="what-if-note" className="note">
+        {value === spec.baseline ? 'Historical rainfall as observed by IMERG.' : `What-if rainfall sensitivity scenario: every rainfall intensity × ${value.toFixed(2)}. Not a forecast, warning or climate projection.`}
+      </p>
+    </div>
   )
 }

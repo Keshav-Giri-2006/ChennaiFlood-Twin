@@ -26,6 +26,7 @@ from app.utils.timeutil import to_iso_z
 
 RESULTS_SCHEMA_VERSION = "1"
 # The report prints depths to 2 decimals; allow half a centimetre of rounding.
+RAINFALL_PEAK_CROSSCHECK_TOLERANCE_MM_HR = 0.001
 MAX_DEPTH_CROSSCHECK_TOLERANCE_M = 0.0055
 LITERS_PER_MILLION = 1_000_000.0
 
@@ -117,6 +118,14 @@ def process_results(
     sys_outfall = output.system_series("outfall_flow")
     sys_storage = output.system_series("storage_volume")
     sys_lateral = output.system_series("total_lateral_inflow")
+    # The rainfall SWMM actually applied must be the rainfall series this run was prepared with
+    # (baseline or what-if transformed); catches a stale or untransformed model input.
+    check(
+        "crosscheck.swmmRainfallPeakMatchesInput",
+        abs(max(sys_rain) - rainfall.peak_mm_hr) <= RAINFALL_PEAK_CROSSCHECK_TOLERANCE_MM_HR,
+        "SWMM applied rainfall differs from the prepared rainfall series.",
+        {"swmmPeakMmHr": max(sys_rain), "inputPeakMmHr": rainfall.peak_mm_hr},
+    )
 
     flooded = sorted(report.node_flooding, key=lambda r: r["totalFloodVolumeMillionLiters"], reverse=True)
 

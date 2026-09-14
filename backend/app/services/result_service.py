@@ -56,6 +56,10 @@ class ResultService:
             "processingVersion": record.processing_version,
             "engine": results["engine"],
             "simulationPeriod": results["simulationPeriod"],
+            "executionMode": record.artifacts.get("executionMode", "swmm"),
+            "parameters": record.parameters,
+            "rainfallMultiplier": float(record.parameters.get("rainfallMultiplier", 1.0)),
+            "scenarioRun": record.artifacts.get("scenarioRun"),
         }
 
     def _limitations(self, record: SimulationRecord) -> list[str]:

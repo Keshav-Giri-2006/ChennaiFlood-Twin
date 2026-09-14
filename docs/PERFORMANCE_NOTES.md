@@ -1,0 +1,63 @@
+# ChennaiFlood-Twin — Cesium Performance Notes
+
+Measured 2026-09-14 on the development/demo laptop: Intel UHD Graphics (ANGLE Direct3D 11), 16 GB RAM, 1600 × 853 px canvas, real Ward 176 data (6,428 buildings → 6,565 polygon entities, 301 carriageways → 332 polygons, 135 drains → 137 polylines, 35 subcatchments, DEM terrain, OSM imagery, 42-entity peak flood slice).
+
+## Method
+
+- In-app frame profiler `DigitalTwinController.profileFrames(ms)` counts `scene.postRender` events of the normal render loop and reports fps and p50/p95 frame intervals.
+- The embedded IDE preview pane throttles or stops `requestAnimationFrame` whenever it is hidden (it reported 0–7 fps and, in a synchronous render benchmark, meaningless sub-millisecond frames), so it is **not** used for numbers.
+- Measurements ran in a **separate headless Microsoft Edge** instance (new headless mode, hardware ANGLE D3D11, temporary profile) driven over the DevTools protocol against the running dev app. Each configuration toggles layers, waits 2.5 s and records 5–6 s. Headless frame pacing limits this setup to ≈ 21–23 fps even with no globe, so values near 20 fps are the environment ceiling.
+
+## Baseline (Prompt 3 rendering: ground-clamped roads, drains, subcatchments, ward outline)
+
+| Configuration | fps | p50 frame (ms) | p95 frame (ms) |
+|---|---|---|---|
+| All layers | 4.3 – 5.2 | 169 – 235 | 286 – 290 |
+| Buildings hidden | 4.3 | 231 | 291 |
+| Roads hidden | 7.3 | 135 | 171 |
+| Drains hidden | 5.2 | 197 | 229 |
+| Roads + drains hidden | 10.0 (18.0 in a repeat) | 99 (56) | 143 |
+| Flood hidden | 4.7 | 221 | 285 |
+| Terrain + imagery only | 11.3 – 18.4 | 54 – 87 | 53 – 126 |
+| All layers + timeline playback 1× | 6.5 | 150 | 291 |
+
+Diagnostic experiments (terrain only): no globe 21.9 fps; no atmosphere/fog/FXAA 19.9; no depth test against terrain 19.4; `resolutionScale 0.75` 28.4; disabling CSS `backdrop-filter` or hiding all UI overlays +1–2 fps. Conclusion: buildings (≈ 6.5 k extruded polygons in a few batches) and the flood layer are cheap; the **ground-clamped carriageway polygons and drain polylines cost ≈ 95 ms per frame** (classification / ground-polyline passes over terrain). The earlier Prompt 3 observation was confirmed by measurement.
+
+## Change
+
+Roads, drains, subcatchments and the ward outline are now drawn as ordinary batched primitives at **DEM-sampled heights** instead of ground-clamped classification geometry:
+
+- Each vertex height = the same bilinear DEM sample the terrain provider uses (`sampleDem`), × vertical exaggeration, + a small draping offset (subcatchments 0.3 m, roads 0.5 m, drains 1.0 m, ward outline 1.5 m); 0 m when terrain is switched off.
+- The DEM grid now loads before these layers; positions are recomputed (not re-downloaded) when terrain or exaggeration changes.
+- No feature, vertex or attribute was removed or simplified; buildings, flood zones, bottlenecks and comparison zones are unchanged.
+- Visual trade-off: between vertices the terrain mesh can differ slightly from a flat polygon, which the offsets absorb at 1×; at 3–5× exaggeration a small parallax can appear (exaggeration is a labelled visual aid).
+
+## After
+
+| Configuration | fps | p50 frame (ms) | p95 frame (ms) |
+|---|---|---|---|
+| All layers | **19.0 – 20.0** | **51.5 – 52.8** | 56.4 – 56.7 |
+| Buildings hidden | 19.5 | 51.6 | 57.2 |
+| Roads hidden | 19.3 | 52.0 | 56.3 |
+| Drains hidden | 19.6 | 51.1 | 55.8 |
+| Roads + drains hidden | 19.5 | 51.4 | 56.2 |
+| Flood hidden | 20.5 | 49.4 | 53.2 |
+| Terrain + imagery only | 20.8 | 48.4 | 52.5 |
+| All layers + timeline playback 1× | 19.5 | 50.1 | 58.1 |
+
+All layers now render at the environment ceiling (≈ 4× faster; p50 frame time 235 → 52 ms). Layer toggles no longer change frame time measurably.
+
+## Dynamic updates (unchanged design, verified)
+
+- Flood time-slice replacement: 0.1 – 1.1 ms per timestep (≈ 20–42 entities); static layers are never reloaded (`stats.staticLayerLoads` stays 5 through playback, scenario switches and comparison).
+- Exposure highlighting: only changed entity materials are updated (25–68 per step at the peak).
+- Bottleneck time state: restyles ≤ 12 links only when the active set changes; comparison zones are created once and re-styled.
+- Playback preloads the next 3 slices; at 1× it advanced exactly 10 timestamps in 10.0 s; at 4× 36 of 40 in 10 s on the slower pre-optimisation build.
+
+## 3D Tiles decision
+
+Not introduced. Measurements show buildings are not the bottleneck (hiding them changed nothing measurable before or after), and the scene now renders at the headless ceiling with all data. Revisit only if the presentation machine is slower than this laptop or the building dataset grows substantially.
+
+## Reproducing on the presentation machine
+
+In a visible browser with the dev build, open the developer console and run `await window.__digitalTwin.profileFrames(6000)` (dev builds only). Compare with the table above; if fps is low, first check that hardware acceleration is enabled in the browser.

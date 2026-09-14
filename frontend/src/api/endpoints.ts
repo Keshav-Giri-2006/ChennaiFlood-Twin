@@ -2,6 +2,12 @@ import type {
   BottleneckDetail,
   BottleneckFeatureProperties,
   BottleneckList,
+  BottleneckTimeline,
+  Comparison,
+  DemoLoadResponse,
+  DemoResult,
+  ExecutionMode,
+  HealthResponse,
   Exposure,
   ExposureAssets,
   ExposureAssetType,
@@ -33,15 +39,19 @@ export const scenariosApi = {
 }
 
 export const simulationsApi = {
-  async create(scenarioId: string, modelVersion?: string): Promise<SimulationCreated> {
-    const body = modelVersion ? { scenarioId, modelVersion } : { scenarioId }
+  async create(scenarioId: string, options: { modelVersion?: string; rainfallMultiplier?: number } = {}): Promise<SimulationCreated> {
+    const body: Record<string, unknown> = { scenarioId }
+    if (options.modelVersion) body.modelVersion = options.modelVersion
+    if (options.rainfallMultiplier !== undefined) body.parameters = { rainfallMultiplier: options.rainfallMultiplier }
     return requireFields<SimulationCreated>(await apiRequest('/simulations', { method: 'POST', body }), ['simulationId', 'status'], 'Created simulation')
   },
   async get(simulationId: string, signal?: AbortSignal): Promise<SimulationStatus> {
     return requireFields<SimulationStatus>(await apiRequest(`/simulations/${enc(simulationId)}`, { signal }), ['simulationId', 'status', 'stage', 'progress'], 'Simulation')
   },
-  async list(params: { scenarioId?: string; status?: SimulationStatusValue; limit?: number }, signal?: AbortSignal): Promise<SimulationList> {
+  async list(params: { scenarioId?: string; status?: SimulationStatusValue; limit?: number; rainfallMultiplier?: number; executionMode?: ExecutionMode }, signal?: AbortSignal): Promise<SimulationList> {
     const query = new URLSearchParams()
+    if (params.rainfallMultiplier !== undefined) query.set('rainfallMultiplier', String(params.rainfallMultiplier))
+    if (params.executionMode) query.set('executionMode', params.executionMode)
     if (params.scenarioId) query.set('scenarioId', params.scenarioId)
     if (params.status) query.set('status', params.status)
     if (params.limit) query.set('limit', String(params.limit))
@@ -61,6 +71,9 @@ export const floodApi = {
   },
   async timeline(simulationId: string, signal?: AbortSignal): Promise<FloodTimeline> {
     return requireFields<FloodTimeline>(await apiRequest(`/simulations/${enc(simulationId)}/flood/timeline`, { signal }), ['timestamps', 'entries', 'legend'], 'Flood timeline')
+  },
+  async zones(simulationId: string, signal?: AbortSignal): Promise<FeatureCollection> {
+    return requireFields<FeatureCollection>(await apiRequest(`/simulations/${enc(simulationId)}/flood/zones`, { signal }), ['type', 'features'], 'Flood influence zones')
   },
   /** Fetch a time-slice GeoJSON asset. The URL is opaque and comes from the timeline response. */
   async timesliceAsset(assetUrl: string, signal?: AbortSignal): Promise<FeatureCollection> {
@@ -86,8 +99,35 @@ export const decisionApi = {
     const query = time ? `?time=${enc(time)}` : ''
     return requireFields<ExposureAssets>(await apiRequest(`/simulations/${enc(simulationId)}/exposure/${assetType}${query}`, { signal }), ['objectIds', 'count', 'scope'], 'Exposed assets')
   },
+  async bottleneckTimeline(simulationId: string, signal?: AbortSignal): Promise<BottleneckTimeline> {
+    return requireFields<BottleneckTimeline>(await apiRequest(`/simulations/${enc(simulationId)}/bottlenecks/timeline`, { signal }), ['entries', 'summary', 'links'], 'Bottleneck timeline')
+  },
   async recommendations(simulationId: string, signal?: AbortSignal): Promise<RecommendationList> {
     return requireFields<RecommendationList>(await apiRequest(`/simulations/${enc(simulationId)}/recommendations`, { signal }), ['recommendations', 'summary', 'rules'], 'Recommendations')
+  },
+}
+
+export const demoApi = {
+  async catalogue(signal?: AbortSignal): Promise<DemoResult[]> {
+    return requireFields<{ demoResults: DemoResult[] }>(await apiRequest('/demo', { signal }), ['demoResults'], 'Demo results').demoResults
+  },
+  /** Loads the verified precomputed result; the backend never runs SWMM for this. */
+  async load(demoId: string): Promise<DemoLoadResponse> {
+    return requireFields<DemoLoadResponse>(await apiRequest(`/demo/${enc(demoId)}/load`, { method: 'POST' }), ['simulationId', 'status'], 'Demo load')
+  },
+}
+
+export const comparisonsApi = {
+  async get(baselineId: string, scenarioId: string, signal?: AbortSignal): Promise<Comparison> {
+    const query = new URLSearchParams({ baseline: baselineId, scenario: scenarioId })
+    return requireFields<Comparison>(await apiRequest(`/comparisons?${query.toString()}`, { signal, timeoutMs: 120_000 }), ['metrics', 'floodInfluence', 'bottlenecks'], 'Scenario comparison')
+  },
+}
+
+export const healthApi = {
+  /** Lightweight liveness probe (no database/SWMM checks). */
+  async health(signal?: AbortSignal): Promise<HealthResponse> {
+    return requireFields<HealthResponse>(await apiRequest('/health', { signal, timeoutMs: 5_000 }), ['status'], 'Health')
   },
 }
 

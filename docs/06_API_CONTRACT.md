@@ -2031,3 +2031,46 @@ Asset responses: `assetType, scope (event|timestamp), time, index, floodingNodeI
 - `/kpis` `drainage.potentialBottlenecks` is a Quantity (`methodVersion`, `bySeverity`); new group `exposure`: `buildingsInInfluenceZonesEvent`, `buildingsInInfluenceZonesPeak`, `roadAreaInInfluenceZonesEvent`. `flood.affectedBuildings` stays unavailable (no flood extent).
 - `/results` `products.bottlenecks`, `products.exposure`, `products.recommendations` are `true` for completed simulations; `products.risk` stays `false`.
 - Simulation `artifacts` record `bottleneckAnalysisVersion`, `exposureAnalysisVersion`, `decisionSupportVersion`.
+
+---
+
+# 84. Implementation Addendum — Demo Result, Rainfall Scenarios, Dynamic Bottlenecks, Comparison (2026-09-14)
+
+Additive only; no existing endpoint, field or enum was renamed or removed. The previous `422 UNSUPPORTED_PARAMETER` for every `parameters` payload (§81.3) is narrowed: the registered `rainfallMultiplier` is now accepted. Methods: `docs/SCENARIO_ANALYSIS_METHOD.md`, `docs/DECISION_SUPPORT_METHOD.md` §3.2.
+
+## 84.1 Rainfall-multiplier scenario runs
+
+- `POST /simulations` body `{"scenarioId": "michaung-2023", "parameters": {"rainfallMultiplier": 1.25}}`.
+- Validation: unknown keys → `422 UNSUPPORTED_PARAMETER`; non-number, NaN/infinity, outside 0.5–2.0, more than 2 decimals → `422 INVALID_PARAMETER` (`details.minimum/maximum`).
+- `GET /scenarios/{id}` adds `whatIf {parameter, label, description, minimum, maximum, decimals, baseline, presets[{value,label}], scenarioAnalysisVersion, terminology}`.
+- `GET /simulations/{id}` and list items add `parameters`, `executionMode` (`swmm` | `precomputed-demo`), `demoId`, `scenarioRun` (see method doc §4) — all optional for older clients.
+- `GET /simulations` adds filters `rainfallMultiplier` (1.0 matches runs without parameters) and `executionMode`.
+- `/summary` and `/kpis` `metadata` add `executionMode`, `parameters`, `rainfallMultiplier`, `scenarioRun`; rainfall KPIs are the scaled series of the run.
+
+## 84.2 Precomputed demonstration result
+
+```text
+GET  /demo                     -> {demoResults: [{demoId, label, description, scenarioId, modelVersion, rainfallMultiplier, executionMode, available, verification, loadedSimulationId, loadingSimulationId}]}
+POST /demo/{demoId}/load       -> 202 {demoId, simulationId, status, reused}   (never runs SWMM)
+```
+
+The registered archived SWMM outputs (`backend/config/demo.json`, SHA-256 pinned) are processed by the normal pipeline into a simulation with `executionMode: precomputed-demo`. A completed demo simulation is re-used. Missing or modified files → `503 RESULT_NOT_FOUND`; unknown `demoId` → `404 NOT_FOUND`.
+
+## 84.3 Dynamic bottlenecks
+
+`GET /simulations/{id}/bottlenecks/timeline[?time=<ISO>]` (bottleneck-timeline-v1): `definition`, `links{linkId: {sourceObjectId, eventSeverity, fullFlowCapacityCms, componentHasOutfall}}`, `summary{timestampsWithActiveBottlenecks, firstActiveTime, lastActiveTime, perLink{activeSteps, activeHours, stepsBySeverity, firstActive, lastActive, peakUtilization, peakUtilizationTime}}`, `entries[{index, time, activeCount, highestSeverity, active[{linkId, sourceObjectId, severity, eventSeverity, criteria{full, aboveFullFlowCapacity, connectedNodeFlooding}, flowCms, fullFlowCapacityCms, utilization, fillFraction, depthM, velocityMps, floodingNodeIds}], mostLoaded}]`. With `time`, `entries` is replaced by `entry`. Time errors as §82.1. `bottlenecks.json` adds `derivedFullFlowCapacities{linkId: m3/s}`. Decision manifests and simulation artifacts add `bottleneckTimelineVersion`.
+
+## 84.4 Scenario comparison (§51)
+
+```text
+POST /comparisons   {"simulationIds": [baselineId, scenarioId]}
+GET  /comparisons?baseline=<id>&scenario=<id>
+```
+
+Response: `comparisonId, scenarioAnalysisVersion, terminology, simulations[], baseline, scenario ({simulationId, scenarioId, modelVersion, processingVersion, rainfallMultiplier, executionMode, label}), methodVersions, metrics[{key, label, unit, source, baseline, scenario, absoluteChange, percentChange}], floodInfluence{definition, event{both, scenarioOnly, baselineOnly}, peak, timeline[], nodeMaximumOverflowRates[], sharedScale{note, baselineOverflowClasses, scenarioOverflowClasses}}, bottlenecks{new, persisting, notFlaggedInScenario}, exposure{buildingsEvent, buildingsPeak, roadAreaEventM2, linkedToComponentsWithoutOutfall, terminology}, recommendations{new, persisting, notTriggeredInScenario, note}, statements[], limitations[]`.
+
+Errors: same ID, different model/scenario/processing or method versions, different timestamps → `422 COMPARISON_NOT_COMPATIBLE`; not completed → `409`; unknown → `404`. The §51 `metrics.maximumDepthM` example is not used (no ground depth exists).
+
+## 84.5 Transport
+
+Responses ≥ 2 KB are gzip-compressed when the client accepts it (e.g. bottleneck timeline 325 KB, comparison 48.5 KB → 5.6 KB).

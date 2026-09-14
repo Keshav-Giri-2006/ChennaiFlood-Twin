@@ -13,6 +13,7 @@ const LAYERS: { key: LayerKey; label: string; hint?: string }[] = [
   { key: 'bottlenecks', label: 'Potential bottlenecks', hint: 'model diagnostics, not confirmed failures' },
   { key: 'exposureBuildings', label: 'Model-derived building exposure', hint: 'buildings intersecting influence zones of overflowing nodes' },
   { key: 'exposureRoads', label: 'Model-derived road exposure', hint: 'carriageways intersecting influence zones of overflowing nodes' },
+  { key: 'comparison', label: 'Scenario comparison (flood influence)', hint: 'categorical: both runs / additional in what-if / baseline only' },
 ]
 
 export function LayerControls() {

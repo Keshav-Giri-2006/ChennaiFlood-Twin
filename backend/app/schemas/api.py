@@ -114,6 +114,10 @@ class SimulationStatusResponse(ApiModel):
     startedAt: IsoDateTime | None
     completedAt: IsoDateTime | None
     error: SimulationErrorModel | None
+    parameters: dict[str, Any] = Field(default_factory=dict)
+    executionMode: Literal["swmm", "precomputed-demo"] = "swmm"
+    demoId: str | None = None
+    scenarioRun: dict[str, Any] | None = None
 
 
 class SimulationListResponse(ApiModel):

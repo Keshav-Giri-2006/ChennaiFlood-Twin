@@ -1,0 +1,18 @@
+# Build context hygiene: never send secrets, dependencies, runtime outputs or large raw downloads.
+.git
+**/.env
+**/.env.*
+!**/.env.example
+**/node_modules
+**/dist
+**/.venv
+**/__pycache__
+**/*.pyc
+**/.pytest_cache
+backend/runtime
+backend/tests
+*.log
+data_raw/dem
+data_raw/gcc
+docs
+.claude

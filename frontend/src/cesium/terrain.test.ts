@@ -40,3 +40,17 @@ describe('sampleDem', () => {
     expect(sampleDem(partial, 80.0005, 12.9995)).toBeCloseTo(10) // renormalised over valid neighbours only
   })
 })
+
+describe('terrain-sampled static geometry', () => {
+  it('drapes line and polygon vertices at the DEM height plus offset (no clamping primitives)', async () => {
+    const { Cartographic } = await import('cesium')
+    const { linePartsAt, polygonHierarchiesAt } = await import('./geometry')
+    const g = grid([10, 10, 10, 10], 2, 2)
+    const height = (lon: number, lat: number) => (sampleDem(g, lon, lat) ?? 0) + 0.5
+    const [line] = linePartsAt({ type: 'LineString', coordinates: [[80.0, 13.0], [80.001, 12.999]] }, height)
+    expect(line.map((p) => Math.round(Cartographic.fromCartesian(p).height * 100) / 100)).toEqual([10.5, 10.5])
+    const [poly] = polygonHierarchiesAt({ type: 'Polygon', coordinates: [[[80.0, 13.0], [80.001, 13.0], [80.001, 12.999], [80.0, 13.0]]] }, () => 2)
+    expect(poly.positions).toHaveLength(3)
+    expect(Cartographic.fromCartesian(poly.positions[0]).height).toBeCloseTo(2, 3)
+  })
+})

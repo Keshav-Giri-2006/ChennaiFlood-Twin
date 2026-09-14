@@ -40,6 +40,10 @@ def _status(record: SimulationRecord) -> SimulationStatusResponse:
             if record.error
             else None
         ),
+        parameters=record.parameters,
+        executionMode=record.artifacts.get("executionMode", "swmm"),
+        demoId=record.artifacts.get("demoId"),
+        scenarioRun=record.artifacts.get("scenarioRun"),
     )
 
 
@@ -73,9 +77,19 @@ def list_simulations(
     status: SimulationStatus | None = Query(default=None),
     limit: int = Query(default=20, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    rainfallMultiplier: float | None = Query(default=None, gt=0, le=100, description="Only runs with this rainfall multiplier (1.0 matches baseline runs without parameters)"),
+    executionMode: str | None = Query(default=None, pattern=r"^(swmm|precomputed-demo)$"),
     container: Container = Depends(get_container),
 ) -> SimulationListResponse:
-    records = container.simulations.list(scenario_id=scenarioId, status=status, limit=limit, offset=offset)
+    if rainfallMultiplier is None and executionMode is None:
+        records = container.simulations.list(scenario_id=scenarioId, status=status, limit=limit, offset=offset)
+    else:
+        candidates = container.simulations.list(scenario_id=scenarioId, status=status, limit=1000, offset=0)
+        records = [
+            r for r in candidates
+            if (rainfallMultiplier is None or float(r.parameters.get("rainfallMultiplier", 1.0)) == rainfallMultiplier)
+            and (executionMode is None or r.artifacts.get("executionMode", "swmm") == executionMode)
+        ][offset : offset + limit]
     return SimulationListResponse(simulations=[_status(r) for r in records], limit=limit, offset=offset)
 
 

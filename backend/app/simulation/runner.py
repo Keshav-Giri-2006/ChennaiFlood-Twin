@@ -116,3 +116,34 @@ class SwmmRunner:
             stdout_file=stdout_file,
             stderr_file=stderr_file,
         )
+
+
+class PrecomputedResultRunner:
+    """Uses a verified archived SWMM report/output pair instead of executing SWMM.
+
+    Used only for the registered precomputed demonstration result (backend/config/demo.json).
+    The archived files are checksum-verified before they are copied into the workspace, so a
+    modified or substituted file can never be presented as the demo result. It never
+    fabricates output: if verification fails, the run fails.
+    """
+
+    def __init__(self, report_source: Path, report_sha256: str, output_source: Path, output_sha256: str) -> None:
+        self.sources = ((report_source, report_sha256, "report.rpt"), (output_source, output_sha256, "output.out"))
+
+    def run(self, workspace: Path, input_name: str = "input.inp") -> SwmmRunResult:
+        from app.utils.files import sha256_file
+
+        workspace = workspace.resolve()
+        started = time.monotonic()
+        for source, expected, name in self.sources:
+            if not source.is_file():
+                raise SwmmExecutionError(f"Precomputed result file {source.name} is not available.")
+            if sha256_file(source) != expected:
+                raise SwmmExecutionError(f"Precomputed result file {source.name} does not match its registered checksum.")
+            target = workspace / name
+            if not is_within(target, workspace):
+                raise SwmmExecutionError("Simulation file path escapes the workspace.")
+            shutil.copyfile(source, target)
+        (workspace / "stdout.log").write_text("precomputed demonstration result: verified archived SWMM 5.2.4 report and output copied; SWMM not executed\n", encoding="utf-8")
+        (workspace / "stderr.log").write_text("", encoding="utf-8")
+        return SwmmRunResult(0, round(time.monotonic() - started, 3), workspace / "report.rpt", workspace / "output.out", workspace / "stdout.log", workspace / "stderr.log")

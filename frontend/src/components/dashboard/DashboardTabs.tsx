@@ -1,6 +1,7 @@
 import type { KeyboardEvent } from 'react'
 import { useViewerStore, type DashboardTab } from '../../state/viewerStore'
 import { ErrorBoundary } from '../common/ErrorBoundary'
+import { ComparisonPanel } from '../decision/ComparisonPanel'
 import { ExposurePanel } from '../decision/ExposurePanel'
 import { HydraulicsPanel } from '../decision/HydraulicsPanel'
 import { RecommendationsPanel } from '../decision/RecommendationsPanel'
@@ -11,6 +12,7 @@ const TABS: { id: DashboardTab; label: string }[] = [
   { id: 'hydraulics', label: 'Hydraulics' },
   { id: 'exposure', label: 'Exposure' },
   { id: 'actions', label: 'Actions' },
+  { id: 'compare', label: 'Compare' },
 ]
 
 /** Decision-support panels. Switching tabs only changes React panels; the Cesium viewer is untouched. */
@@ -51,6 +53,7 @@ export function DashboardTabs() {
           {tab === 'hydraulics' && <HydraulicsPanel />}
           {tab === 'exposure' && <ExposurePanel />}
           {tab === 'actions' && <RecommendationsPanel />}
+          {tab === 'compare' && <ComparisonPanel />}
         </ErrorBoundary>
       </div>
     </section>

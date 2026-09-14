@@ -12,8 +12,9 @@ from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 
-from app.api.routes import decision, flood, gis, health, scenarios, simulations
+from app.api.routes import comparisons, decision, demo, flood, gis, health, scenarios, simulations
 from app.core.config import APP_VERSION, Settings, get_settings
 from app.core.container import Container
 from app.core.errors import register_exception_handlers
@@ -64,10 +65,12 @@ def create_app(settings: Settings | None = None, container: Container | None = N
         allow_headers=["Content-Type", "X-Request-ID", "If-None-Match"],
         expose_headers=["X-Request-ID", "ETag", "Location"],
     )
+    # Large JSON products (timelines, GIS layers) compress 5-10x; small responses are left untouched.
+    app.add_middleware(GZipMiddleware, minimum_size=2048)
     register_exception_handlers(app)
 
     api = APIRouter(prefix=API_PREFIX)
-    for module in (health, scenarios, simulations, flood, decision, gis):
+    for module in (health, scenarios, simulations, flood, decision, demo, comparisons, gis):
         api.include_router(module.router)
     app.include_router(api)
     return app

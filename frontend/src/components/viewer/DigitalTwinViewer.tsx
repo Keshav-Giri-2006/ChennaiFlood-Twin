@@ -8,9 +8,11 @@ import { ControllerContext } from './controllerContext'
  * Creates the Cesium viewer exactly once per mount and exposes its controller.
  * Store changes are pushed to the controller through effects; the viewer itself is never recreated.
  */
-export function DigitalTwinViewer({ children }: { children?: ReactNode }) {
+export function DigitalTwinViewer({ children, before }: { children?: ReactNode; before?: ReactNode }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [controller, setController] = useState<DigitalTwinController | null>(null)
+  // Incremented only by an explicit user "Restart 3D viewer" action after a rendering failure.
+  const viewerEpoch = useViewerStore((s) => s.viewerEpoch)
 
   useEffect(() => {
     const container = containerRef.current
@@ -37,7 +39,7 @@ export function DigitalTwinViewer({ children }: { children?: ReactNode }) {
       setController(null)
       if (import.meta.env.DEV) console.info('[digital-twin] viewer destroyed')
     }
-  }, [])
+  }, [viewerEpoch])
 
   // Sync viewer/UI state into the scene.
   useEffect(() => {
@@ -60,6 +62,7 @@ export function DigitalTwinViewer({ children }: { children?: ReactNode }) {
 
   return (
     <ControllerContext.Provider value={controller}>
+      {before}
       <div className="viewer-root">
         <div ref={containerRef} className="cesium-container" aria-label="Ward 176 3D Digital Twin viewer" />
         {children}

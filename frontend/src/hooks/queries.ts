@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { decisionApi, floodApi, gisApi, scenariosApi, simulationsApi } from '../api/endpoints'
+import { comparisonsApi, decisionApi, demoApi, floodApi, gisApi, healthApi, scenariosApi, simulationsApi } from '../api/endpoints'
 import type { ExposureAssetType, FloodTimelineEntry, SimulationStatusValue } from '../types/api'
 
 const TERMINAL: SimulationStatusValue[] = ['COMPLETED', 'FAILED']
@@ -44,7 +44,8 @@ export function useScenario(scenarioId: string | null) {
 export function useLatestCompletedSimulation(scenarioId: string | null) {
   return useQuery({
     queryKey: queryKeys.latestCompleted(scenarioId ?? ''),
-    queryFn: async ({ signal }) => (await simulationsApi.list({ scenarioId: scenarioId as string, status: 'COMPLETED', limit: 1 }, signal)).simulations[0] ?? null,
+    // Baseline (1.00x) runs only: what-if runs are opened explicitly from the comparison panel.
+    queryFn: async ({ signal }) => (await simulationsApi.list({ scenarioId: scenarioId as string, status: 'COMPLETED', limit: 1, rainfallMultiplier: 1 }, signal)).simulations[0] ?? null,
     enabled: Boolean(scenarioId),
     staleTime: 60_000,
   })
@@ -66,7 +67,7 @@ export function useSimulationStatus(simulationId: string | null) {
 export function useCreateSimulation() {
   const client = useQueryClient()
   return useMutation({
-    mutationFn: ({ scenarioId }: { scenarioId: string }) => simulationsApi.create(scenarioId),
+    mutationFn: ({ scenarioId, rainfallMultiplier }: { scenarioId: string; rainfallMultiplier?: number }) => simulationsApi.create(scenarioId, { rainfallMultiplier }),
     onSuccess: (created) => {
       client.invalidateQueries({ queryKey: ['simulations'] })
       return created
@@ -157,4 +158,66 @@ export function useRecommendations(simulationId: string | null) {
 
 export function useModelLayer(kind: 'conduits' | 'nodes', enabled = true) {
   return useQuery({ queryKey: queryKeys.modelLayer(kind), queryFn: ({ signal }) => gisApi.model(kind, signal), enabled, ...IMMUTABLE })
+}
+
+export const HEALTH_POLL_MS = 20_000
+
+/** Backend liveness, polled gently (20 s; 5 s timeout). */
+export function useBackendHealth() {
+  return useQuery({
+    queryKey: ['health'],
+    queryFn: ({ signal }) => healthApi.health(signal),
+    refetchInterval: HEALTH_POLL_MS,
+    refetchIntervalInBackground: false,
+    retry: 0,
+    staleTime: 0,
+  })
+}
+
+export function useDemoCatalogue() {
+  return useQuery({ queryKey: ['demo'], queryFn: ({ signal }) => demoApi.catalogue(signal), staleTime: 30_000 })
+}
+
+export function useLoadDemo() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (demoId: string) => demoApi.load(demoId),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: ['demo'] })
+      void client.invalidateQueries({ queryKey: ['simulations'] })
+    },
+  })
+}
+
+export function useBottleneckTimeline(simulationId: string | null) {
+  return useQuery({ queryKey: ['decision', simulationId ?? '', 'bottleneck-timeline'], queryFn: ({ signal }) => decisionApi.bottleneckTimeline(simulationId as string, signal), enabled: Boolean(simulationId), ...IMMUTABLE })
+}
+
+/** Completed simulations of a scenario (baseline, what-if and demo runs) for comparison selection. */
+export function useCompletedSimulations(scenarioId: string | null) {
+  return useQuery({
+    queryKey: ['simulations', 'completed', scenarioId ?? ''],
+    queryFn: async ({ signal }) => (await simulationsApi.list({ scenarioId: scenarioId as string, status: 'COMPLETED', limit: 50 }, signal)).simulations,
+    enabled: Boolean(scenarioId),
+    staleTime: 30_000,
+  })
+}
+
+export function useComparison(baselineId: string | null, scenarioId: string | null) {
+  return useQuery({
+    queryKey: ['comparison', baselineId ?? '', scenarioId ?? ''],
+    queryFn: ({ signal }) => comparisonsApi.get(baselineId as string, scenarioId as string, signal),
+    enabled: Boolean(baselineId && scenarioId && baselineId !== scenarioId),
+    retry: false,
+    ...IMMUTABLE,
+  })
+}
+
+export function useFloodZones(simulationId: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: ['flood', simulationId ?? '', 'zones'],
+    queryFn: ({ signal }) => floodApi.zones(simulationId as string, signal),
+    enabled: Boolean(simulationId) && enabled,
+    ...IMMUTABLE,
+  })
 }

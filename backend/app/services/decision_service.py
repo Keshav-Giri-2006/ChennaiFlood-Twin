@@ -28,6 +28,7 @@ from shapely.geometry import shape
 from shapely.validation import make_valid
 
 from app.analysis.bottleneck_analysis import BottleneckAnalysisError, analyse_bottlenecks, network_components
+from app.analysis.bottleneck_timeline import analyse_bottleneck_timeline
 from app.analysis.exposure_analysis import Asset, ExposureAnalysisError, analyse_exposure
 from app.analysis.flood_processing import FloodProcessingError, influence_zones, parse_time_query, timestamp_key
 from app.analysis.recommendations import generate_recommendations
@@ -41,6 +42,7 @@ from app.repositories.registry import Registry
 from app.repositories.results import ResultStore, WorkspaceStore, validate_simulation_id
 from app.services.flood_service import FloodProductStore
 from app.simulation.inp_reader import read_inp
+from app.simulation.output_reader import read_output
 from app.simulation.report_parser import parse_report
 from app.utils.files import read_json, sha256_file, write_json_atomic
 from app.utils.timeutil import utcnow
@@ -75,6 +77,7 @@ class DecisionProductStore:
             "bottleneckAnalysisVersion": self.settings.bottleneck_analysis_version,
             "exposureAnalysisVersion": self.settings.exposure_analysis_version,
             "decisionSupportVersion": self.settings.decision_support_version,
+            "bottleneckTimelineVersion": self.settings.bottleneck_timeline_version,
         }
 
     def directory(self, simulation_id: str) -> Path:
@@ -179,6 +182,14 @@ class DecisionProductStore:
             node_component=components.node_component,
             component_has_outfall={c["modelComponentId"]: bool(c["outfalls"]) for c in components.components},
         )
+        bottleneck_timeline = analyse_bottleneck_timeline(
+            **common,
+            timeline_version=self.settings.bottleneck_timeline_version,
+            bottlenecks=bottlenecks,
+            output=read_output(workspace / "output.out"),
+            inp=inp,
+            flooding_nodes_by_period=periods,
+        )
         recommendations = generate_recommendations(
             **common,
             decision_version=self.settings.decision_support_version,
@@ -199,6 +210,7 @@ class DecisionProductStore:
         staging.mkdir(parents=True)
         write_json_atomic(staging / "bottlenecks.json", bottlenecks)
         write_json_atomic(staging / "bottlenecks.geojson", bottleneck_geojson)
+        write_json_atomic(staging / "bottleneck_timeline.json", bottleneck_timeline)
         write_json_atomic(staging / "exposure.json", exposure)
         write_json_atomic(staging / "exposure_assets.json", associations)
         write_json_atomic(staging / "recommendations.json", recommendations)
@@ -279,6 +291,20 @@ class DecisionService:
         related = [r["id"] for r in recs["recommendations"] if link_id in r["relatedBottleneckLinkIds"] or any(l["linkId"] == link_id for l in r["evidence"]["links"])]
         meta = {k: doc[k] for k in ("simulationId", "scenarioId", "modelVersion", "bottleneckAnalysisVersion", "dataType", "method", "generatedAt")}
         return {**match, "relatedRecommendationIds": related, "metadata": meta, "terminology": doc["terminology"]}
+
+    def bottleneck_timeline(self, simulation_id: str, time_text: str | None = None) -> dict[str, Any]:
+        record, _manifest, doc = self._load(simulation_id, "bottleneck_timeline.json")
+        if time_text is None:
+            return doc
+        try:
+            parsed = parse_time_query(time_text)
+        except ValueError as exc:
+            raise UnprocessableError("INVALID_TIMESTAMP", "The time parameter must be an ISO 8601 timestamp with a UTC offset, e.g. 2023-12-03T22:00:00Z.", details={"time": time_text}) from exc
+        key = timestamp_key(parsed.astimezone(UTC))
+        entry = next((e for e in doc["entries"] if timestamp_key(parse_time_query(e["time"])) == key), None)
+        if entry is None:
+            raise NotFoundError("TIMESTAMP_NOT_FOUND", "The requested time is not a reporting timestamp of this simulation.", details={"time": time_text}, simulation_id=record.simulation_id)
+        return {k: v for k, v in doc.items() if k != "entries"} | {"entry": entry}
 
     def bottlenecks_geojson_path(self, simulation_id: str) -> Path:
         record, _manifest, _doc = self._load(simulation_id, "bottlenecks.json")

@@ -1,6 +1,7 @@
 import { act, cleanup, render } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { useFloodStore } from '../../state/floodStore'
+import { useSimulationStore } from '../../state/simulationStore'
 import { DEFAULT_VISIBILITY, useViewerStore } from '../../state/viewerStore'
 import { DigitalTwinViewer } from './DigitalTwinViewer'
 
@@ -37,6 +38,10 @@ describe('DigitalTwinViewer', () => {
       useViewerStore.getState().setDashboardTab('exposure')
       useViewerStore.getState().setFloodOpacity(0.8)
       useFloodStore.setState({ simulationId: 's', selectedIndex: 5, isPlaying: true })
+      useViewerStore.getState().setVisible('comparison', true)
+      useSimulationStore.getState().setRainfallMultiplier(1.25)
+      useSimulationStore.getState().setActiveSimulation('what-if-run')
+      useSimulationStore.getState().setComparison('baseline', 'what-if-run')
     })
     rerender(<DigitalTwinViewer />)
 
@@ -44,7 +49,10 @@ describe('DigitalTwinViewer', () => {
     expect(controller.destroy).not.toHaveBeenCalled()
     expect(controller.setLayerVisible).toHaveBeenCalledWith('bottlenecks', true)
     expect(controller.setLayerVisible).toHaveBeenCalledWith('exposureBuildings', true)
-    unmount()
+    // Only the explicit recovery action recreates the viewer.
+    act(() => useViewerStore.getState().restartViewer())
+    expect(created.length).toBe(count + 1)
     expect(controller.destroy).toHaveBeenCalledTimes(1)
+    unmount()
   })
 })

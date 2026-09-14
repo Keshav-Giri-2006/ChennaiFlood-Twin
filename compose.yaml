@@ -1,0 +1,51 @@
+# Local container deployment of ChennaiFlood-Twin (groundwork only; not an AWS deployment).
+#   docker compose up --build        ->  http://localhost:8080
+name: chennaiflood-twin
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    image: chennaiflood-twin-backend:local
+    environment:
+      APP_ENV: ${APP_ENV:-container}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # Browsers reach the API through the frontend's same-origin /api proxy; CORS only matters for direct API use.
+      CORS_ALLOW_ORIGINS: ${CORS_ALLOW_ORIGINS:-http://localhost:8080,http://127.0.0.1:8080}
+      SIMULATION_MAX_CONCURRENT: ${SIMULATION_MAX_CONCURRENT:-1}
+      SWMM_TIMEOUT_SECONDS: ${SWMM_TIMEOUT_SECONDS:-900}
+      # Defaults to SQLite inside the runtime volume; set DATABASE_URL for PostgreSQL.
+      DATABASE_URL: ${DATABASE_URL:-}
+    volumes:
+      - backend-runtime:/app/runtime
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=4).status == 200 else 1)"]
+      interval: 20s
+      timeout: 5s
+      start_period: 40s
+      retries: 3
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    image: chennaiflood-twin-frontend:local
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "${FRONTEND_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/healthz"]
+      interval: 20s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+    restart: unless-stopped
+
+volumes:
+  backend-runtime:

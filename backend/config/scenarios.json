@@ -31,7 +31,30 @@
       "limitations": [
         "Rainfall is a single coarse IMERG grid-cell (0.1 degree) area-averaged series, not dense street-level gauge observations.",
         "The same rainfall series is applied uniformly to all 35 model subcatchments."
-      ]
+      ],
+      "whatIf": {
+        "parameter": "rainfallMultiplier",
+        "label": "Rainfall multiplier (what-if sensitivity)",
+        "description": "What-if rainfall sensitivity scenario: every rainfall intensity of the historical series is multiplied by the same factor; timestamps, interval and duration are unchanged. Not a forecast, warning or climate projection.",
+        "minimum": 0.5,
+        "maximum": 2.0,
+        "decimals": 2,
+        "baseline": 1.0,
+        "presets": [
+          {
+            "value": 1.0,
+            "label": "1.00× Baseline (historical rainfall)"
+          },
+          {
+            "value": 1.25,
+            "label": "1.25× Increased rainfall"
+          },
+          {
+            "value": 1.5,
+            "label": "1.50× Increased rainfall"
+          }
+        ]
+      }
     }
   ]
 }

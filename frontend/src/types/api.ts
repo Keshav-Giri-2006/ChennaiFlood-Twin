@@ -57,6 +57,7 @@ export interface ScenarioDetail {
     dailyTotalsMm: Record<string, number>
   }
   limitations: string[]
+  whatIf?: WhatIfSpec | null
 }
 
 // ---- simulations ---------------------------------------------------------------
@@ -79,6 +80,37 @@ export interface SimulationStatus {
   startedAt: string | null
   completedAt: string | null
   error: { code: string; message: string; details?: unknown } | null
+  parameters?: { rainfallMultiplier?: number }
+  executionMode?: ExecutionMode
+  demoId?: string | null
+  scenarioRun?: ScenarioRun | null
+}
+
+export type ExecutionMode = 'swmm' | 'precomputed-demo'
+
+export interface ScenarioRun {
+  scenarioAnalysisVersion: string
+  type: 'rainfall-multiplier'
+  parentScenarioId: string
+  rainfallMultiplier: number
+  baselineModelSha256: string
+  transformedModelSha256: string
+  transformedModelIdenticalToBaseline: boolean
+  rainfall: { records: number; baselineTotalMm: number; scenarioTotalMm: number; baselinePeakMmHr: number; scenarioPeakMmHr: number }
+  createdAt: string
+}
+
+export interface WhatIfSpec {
+  parameter: 'rainfallMultiplier'
+  label: string
+  description: string
+  minimum: number
+  maximum: number
+  decimals: number
+  baseline: number
+  presets: { value: number; label: string }[]
+  scenarioAnalysisVersion: string
+  terminology: string
 }
 
 export interface SimulationCreated {
@@ -390,4 +422,137 @@ export interface SimulationSummary {
   limitations: string[]
   metadata: Record<string, unknown>
   [key: string]: unknown
+}
+
+// ---- demo / health (Prompt 4) ------------------------------------------------------
+export interface DemoResult {
+  demoId: string
+  label: string
+  description: string
+  scenarioId: string
+  modelVersion: string
+  rainfallMultiplier: number
+  executionMode: 'precomputed-demo'
+  available: boolean
+  verification: string
+  loadedSimulationId: string | null
+  loadingSimulationId: string | null
+}
+
+export interface DemoLoadResponse {
+  demoId: string
+  simulationId: string
+  status: SimulationStatusValue
+  reused: boolean
+}
+
+export interface HealthResponse {
+  status: string
+  service: string
+  version: string
+}
+
+// ---- dynamic bottlenecks (bottleneck-timeline-v1) --------------------------------------
+export interface ActiveBottleneck {
+  linkId: string
+  sourceObjectId: number
+  severity: BottleneckSeverity
+  eventSeverity: BottleneckSeverity
+  criteria: { full: boolean; aboveFullFlowCapacity: boolean | null; connectedNodeFlooding: boolean }
+  flowCms: number
+  fullFlowCapacityCms: number | null
+  utilization: number | null
+  fillFraction: number
+  depthM: number
+  velocityMps: number
+  floodingNodeIds: string[]
+}
+
+export interface BottleneckTimelineEntry {
+  index: number
+  time: string
+  activeCount: number
+  highestSeverity: BottleneckSeverity | null
+  active: ActiveBottleneck[]
+  mostLoaded: { linkId: string; utilization: number; flowCms: number; fullFlowCapacityCms: number; isPotentialBottleneck: boolean } | null
+}
+
+export interface BottleneckTimeline {
+  simulationId: string
+  bottleneckTimelineVersion: string
+  bottleneckAnalysisVersion: string
+  intervalMinutes: number
+  definition: Record<string, string>
+  links: Record<string, { linkId: string; sourceObjectId: number; eventSeverity: BottleneckSeverity; fullFlowCapacityCms: number | null; componentHasOutfall: boolean }>
+  summary: {
+    timestampsWithActiveBottlenecks: number
+    firstActiveTime: string | null
+    lastActiveTime: string | null
+    perLink: Record<string, { activeSteps: number; activeHours: number; stepsBySeverity: Record<BottleneckSeverity, number>; firstActive: string | null; lastActive: string | null; peakUtilization: number | null; peakUtilizationTime: string | null }>
+  }
+  entries: BottleneckTimelineEntry[]
+}
+
+// ---- scenario comparison (scenario-analysis-v1) ---------------------------------------------
+export interface ComparisonRun {
+  simulationId: string
+  scenarioId: string
+  modelVersion: string
+  rainfallMultiplier: number
+  executionMode: ExecutionMode
+  label: string
+}
+
+export interface ComparisonMetric {
+  key: string
+  label: string
+  unit: string
+  source: string
+  baseline: number
+  scenario: number
+  absoluteChange: number | null
+  percentChange: number | null
+}
+
+export interface NodeSplit {
+  both: string[]
+  scenarioOnly: string[]
+  baselineOnly: string[]
+}
+
+export interface Comparison {
+  comparisonId: string
+  scenarioAnalysisVersion: string
+  terminology: string
+  baseline: ComparisonRun
+  scenario: ComparisonRun
+  metrics: ComparisonMetric[]
+  floodInfluence: {
+    definition: string
+    event: NodeSplit
+    peak: NodeSplit & { index: number }
+    timeline: (NodeSplit & { index: number; time: string })[]
+    nodeMaximumOverflowRates: { nodeId: string; baselineMaximumRateCms: number | null; scenarioMaximumRateCms: number | null }[]
+    sharedScale: { note: string }
+  }
+  bottlenecks: {
+    new: { linkId: string; sourceObjectId: number; scenarioSeverity: BottleneckSeverity }[]
+    persisting: { linkId: string; sourceObjectId: number; baselineSeverity: BottleneckSeverity; scenarioSeverity: BottleneckSeverity; change: 'increased' | 'unchanged' | 'reduced' }[]
+    notFlaggedInScenario: { linkId: string; sourceObjectId: number; baselineSeverity: BottleneckSeverity }[]
+  }
+  exposure: {
+    buildingsEvent: { baseline: number; scenario: number; additionalInScenario: number; notAssociatedInScenario: number }
+    buildingsPeak: { baseline: number; scenario: number }
+    roadAreaEventM2: { baseline: number; scenario: number }
+    linkedToComponentsWithoutOutfall: { baseline: number; scenario: number }
+    terminology: string
+  }
+  recommendations: {
+    new: { id: string; rule: string; title: string; scenarioPriority: Priority }[]
+    persisting: { id: string; rule: string; title: string; baselinePriority: Priority; scenarioPriority: Priority; change: 'increased' | 'unchanged' | 'reduced' }[]
+    notTriggeredInScenario: { id: string; rule: string; title: string; baselinePriority: Priority }[]
+    note: string
+  }
+  statements: string[]
+  limitations: string[]
 }

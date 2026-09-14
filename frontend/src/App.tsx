@@ -16,8 +16,7 @@ import { ViewerToolbar } from './components/viewer/ViewerToolbar'
 export default function App() {
   return (
     <div className="app-shell">
-      <Header />
-      <DigitalTwinViewer>
+      <DigitalTwinViewer before={<Header />}>
         <aside className="sidebar sidebar-left">
           <ErrorBoundary label="Scenario panel">
             <ScenarioPanel />

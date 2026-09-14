@@ -15,6 +15,8 @@ from app.repositories.registry import Registry
 from app.repositories.results import ResultStore, WorkspaceStore
 from app.repositories.simulations import SimulationRepository
 from app.services.decision_service import DecisionProductStore, DecisionService
+from app.services.demo_service import DemoService
+from app.services.comparison_service import ComparisonService
 from app.services.gis_service import GisService
 from app.services.flood_service import FloodProductStore, FloodService
 from app.services.health_service import HealthService
@@ -63,6 +65,8 @@ class Container:
     gis: GisService
     flood: FloodService
     decision: DecisionService
+    demo: DemoService
+    comparisons: ComparisonService
     timeseries: TimeseriesService
     health: HealthService
     executor: SimulationExecutor
@@ -95,16 +99,19 @@ class Container:
         )
         flood = FloodService(simulations, flood_store)
         decision = DecisionService(simulations, decision_store, flood)
+        results = ResultService(simulations, result_store, registry, model_ctx.mapping, flood, decision)
         return cls(
             settings=settings,
             registry=registry,
             engine=engine,
             scenarios=ScenarioService(settings, registry),
             simulations=simulations,
-            results=ResultService(simulations, result_store, registry, model_ctx.mapping, flood, decision),
+            results=results,
             gis=GisService(builder, settings.processed_dir / "gis" / "ward176_dem.tif"),
             flood=flood,
             decision=decision,
+            demo=DemoService(simulations, registry, result_store),
+            comparisons=ComparisonService(settings, simulations, result_store, results, flood, decision),
             timeseries=TimeseriesService(simulations, workspaces, model_ctx.mapping),
             health=HealthService(settings, registry, engine, builder),
             executor=executor,

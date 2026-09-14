@@ -54,9 +54,17 @@ npm run build
   - Shaded polygons are nearest-node influence zones, not flood extent, and there is no ground depth (see `docs/FLOOD_PROCESSING_METHOD.md`).
 - **Base map:** OpenStreetMap tiles (no Cesium Ion token needed).
 
+## Demo flow (Prompt 4)
+
+Load verified demo result → play the timeline → Go to Peak Flood → Hydraulics (time-aware potential bottlenecks, C169 evidence) → Exposure → Actions → Compare (baseline 1.00× vs a 1.25× what-if run: run it or load the stored result) → Methodology & Limitations → Reset demo. The header shows backend connectivity; errors offer Retry / Reload result / Restart 3D viewer.
+
+## Container build
+
+`frontend/Dockerfile` builds the production bundle (`VITE_API_BASE_URL=/api/v1`) and serves it with nginx, which proxies `/api` to the backend service (`frontend/docker/nginx.conf`). See `docs/DOCKER_DEPLOYMENT.md`.
+
 ## Known limitations
 
 - Playback steps one 30-minute SWMM reporting timestamp per second at 1×; it never interpolates states and waits for the next slice if it is not loaded.
-- Rendering is entity-based (6,428 buildings, 301 ground-clamped carriageways, 135 ground polylines). In the embedded browser on an Intel UHD iGPU the scene rendered at ~2–7 fps; hiding roads and drains raised it to ~16 fps, hiding buildings to ~5 fps, so ground-clamped layers are the first optimisation target. Profile on the demo machine before considering primitives or 3D Tiles.
+- Static roads, drains, subcatchments and the ward outline are drawn at DEM-sampled heights instead of ground-clamped geometry (≈ 4× faster on the demo iGPU: 4.3–5.2 → 19–20 fps with all layers; see `docs/PERFORMANCE_NOTES.md`). Buildings remain entities; 3D Tiles are not needed at current measurements.
 - Bottleneck, exposure and recommendation logic lives in the backend; the frontend only displays, highlights and filters.
 - In development, React StrictMode mounts the viewer twice (create → destroy → create); production mounts it once.

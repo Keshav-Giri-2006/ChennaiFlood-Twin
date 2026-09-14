@@ -12,8 +12,9 @@ export type LayerKey =
   | 'bottlenecks'
   | 'exposureBuildings'
   | 'exposureRoads'
+  | 'comparison'
 export type LayerLoadState = 'idle' | 'loading' | 'ready' | 'error'
-export type DashboardTab = 'flood' | 'hydraulics' | 'exposure' | 'actions'
+export type DashboardTab = 'flood' | 'hydraulics' | 'exposure' | 'actions' | 'compare'
 export type ExposureScopeChoice = 'timestamp' | 'event'
 
 export interface SelectedFeature {
@@ -31,8 +32,10 @@ interface ViewerState {
   verticalExaggeration: number
   selection: SelectedFeature | null
   renderError: string | null
+  viewerEpoch: number
   dashboardTab: DashboardTab
   exposureScope: ExposureScopeChoice
+  comparisonScope: ExposureScopeChoice
   methodologyOpen: boolean
   setVisible: (layer: LayerKey, visible: boolean) => void
   setLoadState: (layer: LayerKey, value: LoadInfo) => void
@@ -40,9 +43,14 @@ interface ViewerState {
   setVerticalExaggeration: (value: number) => void
   select: (feature: SelectedFeature | null) => void
   setRenderError: (message: string | null) => void
+  /** Recreate the Cesium viewer (explicit recovery action only). */
+  restartViewer: () => void
   setDashboardTab: (tab: DashboardTab) => void
   setExposureScope: (scope: ExposureScopeChoice) => void
+  setComparisonScope: (scope: ExposureScopeChoice) => void
   setMethodologyOpen: (open: boolean) => void
+  /** Restore default layers, opacity, tabs and selection (demo reset). */
+  reset: () => void
 }
 
 // docs/08 §102 default: city layers on, subcatchments off, flood on once a result exists.
@@ -58,6 +66,7 @@ export const DEFAULT_VISIBILITY: Record<LayerKey, boolean> = {
   bottlenecks: false,
   exposureBuildings: false,
   exposureRoads: false,
+  comparison: false,
 }
 
 export const useViewerStore = create<ViewerState>((set) => ({
@@ -67,8 +76,10 @@ export const useViewerStore = create<ViewerState>((set) => ({
   verticalExaggeration: 1,
   selection: null,
   renderError: null,
+  viewerEpoch: 0,
   dashboardTab: 'flood',
   exposureScope: 'timestamp',
+  comparisonScope: 'event',
   methodologyOpen: false,
   setVisible: (layer, visible) => set((s) => ({ visibility: { ...s.visibility, [layer]: visible } })),
   setLoadState: (layer, value) => set((s) => ({ loadState: { ...s.loadState, [layer]: value } })),
@@ -76,7 +87,20 @@ export const useViewerStore = create<ViewerState>((set) => ({
   setVerticalExaggeration: (verticalExaggeration) => set({ verticalExaggeration }),
   select: (selection) => set({ selection }),
   setRenderError: (renderError) => set({ renderError }),
+  restartViewer: () => set((s) => ({ viewerEpoch: s.viewerEpoch + 1, renderError: null, selection: null })),
   setDashboardTab: (dashboardTab) => set({ dashboardTab }),
   setExposureScope: (exposureScope) => set({ exposureScope }),
+  setComparisonScope: (comparisonScope) => set({ comparisonScope }),
   setMethodologyOpen: (methodologyOpen) => set({ methodologyOpen }),
+  reset: () =>
+    set({
+      visibility: { ...DEFAULT_VISIBILITY },
+      floodOpacity: 0.55,
+      verticalExaggeration: 1,
+      selection: null,
+      dashboardTab: 'flood',
+      exposureScope: 'timestamp',
+      comparisonScope: 'event',
+      methodologyOpen: false,
+    }),
 }))

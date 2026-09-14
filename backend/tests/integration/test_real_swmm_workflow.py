@@ -95,3 +95,38 @@ def test_real_swmm_simulations_run_isolated_and_reproduce_candidate_results(make
         assert a["nodes"]["flooding"] == b["nodes"]["flooding"]
 
     assert sha256_file(MODEL_INP) == master_sha  # the master model was never modified
+
+
+def test_real_swmm_rainfall_scenarios_reproduce_baseline_and_scale_rainfall(make_settings):
+    """scenario-analysis-v1 with the real SWMM executable: 1.00x must reproduce the baseline, 1.25x must use scaled rainfall."""
+    from tests.conftest import ARCHIVED_OUT
+
+    master_sha = sha256_file(MODEL_INP)
+    settings = make_settings(SIMULATION_MAX_CONCURRENT=2)
+    container = Container.build(settings)
+    with TestClient(create_app(settings, container)) as client:
+        post = lambda m: client.post(f"{API}/simulations", json={"scenarioId": "michaung-2023", "parameters": {"rainfallMultiplier": m}}).json()["simulationId"]  # noqa: E731
+        base, scen = post(1.0), post(1.25)
+        fb, fs = _wait(client, base), _wait(client, scen)
+        assert fb["status"] == "COMPLETED" and fs["status"] == "COMPLETED", (fb, fs)
+
+        # Baseline reproduction: identical model bytes and identical SWMM binary output.
+        assert fb["scenarioRun"]["transformedModelSha256"] == master_sha
+        assert sha256_file(settings.workdir / base / "output.out") == sha256_file(ARCHIVED_OUT)
+        kb = client.get(f"{API}/simulations/{base}/kpis").json()
+        assert kb["hydraulics"]["simulatedFloodingVolume"]["value"] == 197_876_000.0
+        assert kb["modelDiagnostics"]["routingContinuityError"]["value"] == 0.068
+        assert client.get(f"{API}/simulations/{base}/flood").json()["peakTime"] == "2023-12-03T22:00:00Z"
+
+        # Scenario: rainfall scaled exactly, SWMM used it, results differ from baseline.
+        ks = client.get(f"{API}/simulations/{scen}/kpis").json()
+        assert ks["rainfall"]["total"]["value"] == pytest.approx(282.835 * 1.25, abs=1e-3)
+        assert ks["rainfall"]["peakIntensity"]["value"] == pytest.approx(23.35 * 1.25, abs=1e-3)
+        assert sha256_file(settings.workdir / scen / "output.out") != sha256_file(ARCHIVED_OUT)
+        assert ks["hydraulics"]["simulatedFloodingVolume"]["value"] > kb["hydraulics"]["simulatedFloodingVolume"]["value"]
+
+        comparison = client.post(f"{API}/comparisons", json={"simulationIds": [base, scen]}).json()
+        metrics = {m["key"]: m for m in comparison["metrics"]}
+        assert metrics["totalRainfall"]["percentChange"] == 25.0
+        assert "C169" in {p["linkId"] for p in comparison["bottlenecks"]["persisting"]}
+    assert sha256_file(MODEL_INP) == master_sha

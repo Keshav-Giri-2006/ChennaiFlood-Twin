@@ -60,3 +60,19 @@
 - Only 4 of 48 model components contain an outfall; 57 % of simulated overflow volume occurs in components without one. Loading there is capped at LOW and converted to connectivity-verification recommendations.
 - A hazard × exposure risk indicator was not implemented (no ground depth/extent; zones are associations).
 - No change to the SWMM model, rainfall, DEM, GIS source data or network.
+
+## 2026-09-14 — Prompt 4: demo hardening, performance, dynamic hydraulics, rainfall scenarios, Docker groundwork
+
+**What changed**
+- **Demo hardening:** verified precomputed demo result (`backend/config/demo.json`, archived SWMM 5.2.4 outputs byte-identical to a live run) loaded without running SWMM and re-used on later loads; "Load verified demo result"; clear labels (Precomputed demonstration result / Simulated now / Stored result); backend status indicator (`/health` every 20 s); Reset demo; request timeouts and friendly error messages with Retry / Reload result / Resume rendering / Restart 3D viewer; panel error boundaries with Retry.
+- **Performance:** measured with an in-app frame profiler in headless Edge (hardware GPU). Ground-clamped roads/drains cost ≈ 95 ms per frame; they, subcatchments and the ward outline are now terrain-sampled primitives. All layers 4.3–5.2 → 19–20 fps (p50 235 → 52 ms), no data removed. No 3D Tiles. See `docs/PERFORMANCE_NOTES.md`.
+- **Dynamic hydraulics:** `bottleneck-timeline-v1` (`GET /bottlenecks/timeline`) from SWMM link time series; time-aware Hydraulics panel (active bottlenecks, highest severity, most loaded conduit, View on map) and map restyling that follows the timeline.
+- **Scenarios:** `scenario-analysis-v1` rainfall multiplier (0.5–2.0) applied only to isolated workspace copies with independent verification and a SWMM-applied-rainfall cross-check; scenario metadata; comparison API with categorical flood-influence comparison, bottleneck / exposure / recommendation changes and cached results; Compare tab and comparison map layer; "Load stored M× result".
+- **Docker:** backend (EPA SWMM 5.2.4 built from the pinned USEPA commit), frontend (nginx + /api proxy), `compose.yaml`, healthchecks, `.dockerignore`, root `.env.example`. **Not built or run:** the Docker Desktop engine fails to start on this machine (see `docs/DOCKER_DEPLOYMENT.md` §7).
+- **Documentation:** `docs/SCENARIO_ANALYSIS_METHOD.md`, `docs/PERFORMANCE_NOTES.md`, `docs/DOCKER_DEPLOYMENT.md`, `DECISION_SUPPORT_METHOD.md` §3.2, API contract §84.
+
+**Scientific decisions / regression**
+- 1.00× scenario: transformed model byte-identical to the approved model; SWMM output byte-identical to the archived baseline; all baseline KPIs, bottlenecks, exposure and recommendations unchanged.
+- 1.25× and 1.50×: rainfall totals exactly +25 % / +50 %; responses non-linear (e.g. peak overflow +33.4 % / +75.8 %); comparisons report new, persisting and increased potential bottlenecks (C169 persists HIGH; C156 new HIGH).
+- Event-level bottleneck, exposure and recommendation methods unchanged (versions unchanged); the timeline product is separately versioned.
+- No change to the SWMM model, rainfall, DEM, GIS source data or network; checksums verified.

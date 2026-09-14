@@ -1,5 +1,5 @@
 import { useEffect, useMemo } from 'react'
-import { useBottleneckGeojson, useBottlenecks, useExposureAssets } from '../../hooks/queries'
+import { useBottleneckGeojson, useBottleneckTimeline, useBottlenecks, useComparison, useExposureAssets, useFloodZones } from '../../hooks/queries'
 import { useActiveTimeline } from '../../hooks/useTimeline'
 import { useSimulationStore } from '../../state/simulationStore'
 import { useViewerStore } from '../../state/viewerStore'
@@ -37,10 +37,58 @@ export function DecisionLayerSync() {
 
   return (
     <>
+      <BottleneckTimeSync />
       <ExposureSync type="buildings" />
       <ExposureSync type="roads" />
+      <ComparisonSync />
     </>
   )
+}
+
+/** Restyles potential bottlenecks with the backend state at the selected timestamp (bottleneck-timeline-v1). */
+function BottleneckTimeSync() {
+  const controller = useDigitalTwin()
+  const { simulationId, index } = useActiveTimeline()
+  const visible = useViewerStore((s) => s.visibility.bottlenecks)
+  const timeline = useBottleneckTimeline(visible ? simulationId : null)
+
+  useEffect(() => {
+    if (!controller) return
+    const doc = timeline.data
+    if (!visible || !doc || doc.simulationId !== simulationId || index === null) {
+      controller.setBottleneckTimeState(null)
+      return
+    }
+    const entry = doc.entries[index]
+    controller.setBottleneckTimeState(Object.fromEntries((entry?.active ?? []).map((a) => [a.linkId, a.severity])))
+  }, [controller, visible, timeline.data, simulationId, index])
+
+  return null
+}
+
+/** Categorical comparison layer (both / additional in scenario / baseline only) following the timeline or the whole event. */
+function ComparisonSync() {
+  const controller = useDigitalTwin()
+  const baselineId = useSimulationStore((s) => s.comparisonBaselineId)
+  const scenarioId = useSimulationStore((s) => s.comparisonScenarioId)
+  const visible = useViewerStore((s) => s.visibility.comparison)
+  const scope = useViewerStore((s) => s.comparisonScope)
+  const { index } = useActiveTimeline()
+  const comparison = useComparison(baselineId, scenarioId)
+  const zones = useFloodZones(baselineId, visible && Boolean(comparison.data))
+
+  useEffect(() => {
+    if (!controller) return
+    const data = comparison.data
+    if (!visible || !data || !zones.data) {
+      controller.setComparison(zones.data ?? null, null)
+      return
+    }
+    const split = scope === 'timestamp' && index !== null ? data.floodInfluence.timeline[index] : data.floodInfluence.event
+    controller.setComparison(zones.data, split ?? data.floodInfluence.event)
+  }, [controller, visible, comparison.data, zones.data, scope, index])
+
+  return null
 }
 
 function ExposureSync({ type }: { type: ExposureAssetType }) {

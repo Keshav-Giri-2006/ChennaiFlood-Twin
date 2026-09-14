@@ -3,7 +3,9 @@ import {
   Cartesian2,
   Cartesian3,
   Color,
+  ArcType,
   ColorMaterialProperty,
+  ConstantProperty,
   CustomDataSource,
   DistanceDisplayCondition,
   EllipsoidTerrainProvider,
@@ -22,12 +24,12 @@ import {
   type MaterialProperty,
   type TerrainProvider,
 } from 'cesium'
-import type { BottleneckFeatureProperties, ExposureAssetType } from '../types/api'
+import type { BottleneckFeatureProperties, BottleneckSeverity, ExposureAssetType, NodeSplit } from '../types/api'
 import type { FeatureCollection, FloodFeatureProperties, Geometry, TerrainGrid } from '../types/gis'
 import type { LayerKey, LayerLoadState, SelectedFeature } from '../state/viewerStore'
-import { bboxOf, lineParts, polygonHierarchies } from './geometry'
-import { BOTTLENECK_COLORS, BOTTLENECK_WIDTH, BUILDING_VISUAL_EXTRUSION_M, EXPOSURE_COLORS, LAYER_COLORS, floodColor } from './styles'
-import { createDemTerrainProvider } from './terrain'
+import { bboxOf, lineParts, linePartsAt, polygonHierarchies, polygonHierarchiesAt } from './geometry'
+import { BOTTLENECK_COLORS, BOTTLENECK_INACTIVE_COLOR, BOTTLENECK_WIDTH, BUILDING_VISUAL_EXTRUSION_M, COMPARISON_COLORS, EXPOSURE_COLORS, LAYER_COLORS, floodColor } from './styles'
+import { createDemTerrainProvider, sampleDem } from './terrain'
 
 type StaticLayer = 'boundary' | 'buildings' | 'roads' | 'drains' | 'subcatchments'
 type ApiLayerName = 'ward' | 'buildings' | 'roads' | 'drains' | 'subcatchments'
@@ -66,6 +68,9 @@ interface FeatureRef {
 
 type Material = MaterialProperty | undefined
 
+/** Draping offsets (m) above the DEM surface; drains sit above carriageways, the ward outline above both. */
+const DRAPE_OFFSET = { subcatchments: 0.3, roads: 0.5, drains: 1.0, boundary: 1.5 }
+
 const MATERIALS = {
   building: new ColorMaterialProperty(LAYER_COLORS.building),
   buildingTranslucent: new ColorMaterialProperty(LAYER_COLORS.buildingUnderFlood),
@@ -91,6 +96,14 @@ export class DigitalTwinController {
   private readonly floodSource = new CustomDataSource('flood')
   private readonly bottleneckSource = new CustomDataSource('bottlenecks')
   private readonly focusSource = new CustomDataSource('focus')
+  private readonly comparisonSource = new CustomDataSource('comparison')
+  /** Per potential bottleneck: severity-coloured line entities and label, for time-aware restyling. */
+  private readonly bottleneckStyle = new Map<string, { severity: BottleneckSeverity; lines: Entity[]; label: Entity | null }>()
+  private bottleneckStateKey = ''
+  private bottleneckTimeState: Record<string, BottleneckSeverity> | null = null
+  private readonly comparisonZones = new Map<string, Entity[]>()
+  private comparisonZonesSource: FeatureCollection | null = null
+  private comparisonKey = ''
   private readonly featureByEntity = new Map<Entity, FeatureRef>()
   private readonly floodFeatureByEntity = new Map<Entity, FeatureRef>()
   private readonly bottleneckFeatureByEntity = new Map<Entity, FeatureRef>()
@@ -99,6 +112,16 @@ export class DigitalTwinController {
   /** Visibility requested before a layer finished loading. */
   private readonly pendingVisibility = new Map<StaticLayer, boolean>()
   private demTerrain: TerrainProvider | null = null
+  private terrainGrid: TerrainGrid | null = null
+  private exaggeration = 1
+  /**
+   * Performance (docs/PERFORMANCE_NOTES.md): roads, drains, subcatchments and the ward outline are drawn
+   * as ordinary primitives at DEM-sampled heights instead of ground-clamped classification geometry,
+   * which cost ~95 ms per frame on the demo iGPU. Their lon/lat geometry is kept here so heights can be
+   * recomputed when terrain or exaggeration changes; the data itself is never altered or reduced.
+   */
+  private readonly draped = new Map<Entity, { kind: 'polygon' | 'polyline'; geometry: FeatureCollection['features'][number]['geometry']; part: number; offset: number }>()
+  readonly staticRenderingMode = 'terrain-sampled-primitives'
   private terrainEnabled = true
   private wardBbox: [number, number, number, number] | null = null
   private selected: { ref: FeatureRef; originals: Material[] } | null = null
@@ -108,7 +131,7 @@ export class DigitalTwinController {
   private destroyed = false
   private buildingsTranslucent = false
   /** Diagnostic counters (exposed for performance inspection). */
-  readonly stats = { floodSliceUpdates: 0, lastFloodSliceMs: 0, exposureUpdates: 0, lastExposureChanged: 0, staticLayerLoads: 0 }
+  readonly stats = { floodSliceUpdates: 0, lastFloodSliceMs: 0, exposureUpdates: 0, lastExposureChanged: 0, staticLayerLoads: 0, bottleneckStateUpdates: 0, comparisonUpdates: 0 }
 
   constructor(container: HTMLElement, loaders: ControllerLoaders, callbacks: ControllerCallbacks) {
     this.loaders = loaders
@@ -139,6 +162,8 @@ export class DigitalTwinController {
     this.viewer.dataSources.add(this.floodSource)
     this.viewer.dataSources.add(this.bottleneckSource)
     this.viewer.dataSources.add(this.focusSource)
+    this.viewer.dataSources.add(this.comparisonSource)
+    this.comparisonSource.show = false
     this.bottleneckSource.show = false
     this.handler = new ScreenSpaceEventHandler(this.viewer.scene.canvas)
     this.handler.setInputAction((movement: ScreenSpaceEventHandler.PositionedEvent) => this.pick(movement.position), ScreenSpaceEventType.LEFT_CLICK)
@@ -149,7 +174,10 @@ export class DigitalTwinController {
     // Ward first so the camera frames Ward 176 immediately (docs/08 §87).
     await this.loadLayer('boundary')
     this.fitWard(0)
-    await Promise.allSettled([this.loadTerrain(), this.loadLayer('roads'), this.loadLayer('subcatchments'), this.loadLayer('drains')])
+    // Terrain heights are needed to drape roads/drains, so the DEM grid loads first (it is small, ~2 kB of heights).
+    await this.loadTerrain()
+    this.redrapeStaticLayers()
+    await Promise.allSettled([this.loadLayer('roads'), this.loadLayer('subcatchments'), this.loadLayer('drains')])
     await this.loadLayer('buildings')
   }
 
@@ -159,6 +187,7 @@ export class DigitalTwinController {
     try {
       const grid = await this.loaders.terrain(this.abort.signal)
       if (this.destroyed) return
+      this.terrainGrid = grid
       this.demTerrain = createDemTerrainProvider(grid)
       if (this.terrainEnabled) this.viewer.terrainProvider = this.demTerrain
       this.callbacks.onLayerState('terrain', { state: 'ready', featureCount: grid.statistics.validCells, loadMs: Math.round(performance.now() - started) })
@@ -224,17 +253,23 @@ export class DigitalTwinController {
         }
         break
       case 'roads':
-        for (const hierarchy of polygonHierarchies(feature.geometry)) add({ polygon: { hierarchy, material: MATERIALS.road } })
+      case 'subcatchments': {
+        const offset = key === 'roads' ? DRAPE_OFFSET.roads : DRAPE_OFFSET.subcatchments
+        const material = key === 'roads' ? MATERIALS.road : LAYER_COLORS.subcatchment
+        polygonHierarchiesAt(feature.geometry, this.heightFn(offset)).forEach((hierarchy, part) => {
+          add({ polygon: { hierarchy, perPositionHeight: true, material } })
+          this.draped.set(ref.entities[ref.entities.length - 1], { kind: 'polygon', geometry: feature.geometry, part, offset })
+        })
         break
-      case 'subcatchments':
-        for (const hierarchy of polygonHierarchies(feature.geometry)) add({ polygon: { hierarchy, material: LAYER_COLORS.subcatchment } })
-        break
+      }
       case 'boundary':
-        for (const part of lineParts(feature.geometry)) add({ polyline: { positions: part, width: 3, clampToGround: true, material: LAYER_COLORS.boundary } })
-        break
       case 'drains': {
-        const color = props.inHydraulicModel ? LAYER_COLORS.drainModelled : LAYER_COLORS.drainNotModelled
-        for (const part of lineParts(feature.geometry)) add({ polyline: { positions: part, width: 3.5, clampToGround: true, material: color } })
+        const offset = key === 'drains' ? DRAPE_OFFSET.drains : DRAPE_OFFSET.boundary
+        const color = key === 'boundary' ? LAYER_COLORS.boundary : props.inHydraulicModel ? LAYER_COLORS.drainModelled : LAYER_COLORS.drainNotModelled
+        linePartsAt(feature.geometry, this.heightFn(offset)).forEach((positions, part) => {
+          add({ polyline: { positions, width: key === 'drains' ? 3.5 : 3, arcType: ArcType.NONE, material: color } })
+          this.draped.set(ref.entities[ref.entities.length - 1], { kind: 'polyline', geometry: feature.geometry, part, offset })
+        })
         break
       }
     }
@@ -246,9 +281,12 @@ export class DigitalTwinController {
     if (key === 'terrain') {
       this.terrainEnabled = visible
       this.viewer.terrainProvider = visible && this.demTerrain ? this.demTerrain : new EllipsoidTerrainProvider()
+      this.redrapeStaticLayers()
     } else if (key === 'flood') {
       this.floodSource.show = visible
       this.updateBuildingContrast()
+    } else if (key === 'comparison') {
+      this.comparisonSource.show = visible
     } else if (key === 'bottlenecks') {
       this.bottleneckSource.show = visible
       if (!visible && this.selected?.ref.feature.layer === 'bottlenecks') this.clearSelection()
@@ -266,6 +304,30 @@ export class DigitalTwinController {
 
   setVerticalExaggeration(value: number): void {
     this.viewer.scene.verticalExaggeration = value
+    if (value !== this.exaggeration) {
+      this.exaggeration = value
+      this.redrapeStaticLayers()
+    }
+    this.render()
+  }
+
+  /** Height (m) of a draped vertex: the same DEM sampling the terrain provider uses, exaggerated, plus a small offset. */
+  private heightFn(offset: number): (lon: number, lat: number) => number {
+    const grid = this.terrainEnabled ? this.terrainGrid : null
+    const factor = this.exaggeration
+    return (lon, lat) => (grid ? (sampleDem(grid, lon, lat) ?? 0) * factor : 0) + offset
+  }
+
+  /** Recompute draped positions after a terrain or exaggeration change (static data is not reloaded). */
+  private redrapeStaticLayers(): void {
+    for (const [entity, d] of this.draped) {
+      const height = this.heightFn(d.offset)
+      if (d.kind === 'polygon' && entity.polygon) {
+        entity.polygon.hierarchy = new ConstantProperty(polygonHierarchiesAt(d.geometry, height)[d.part]) as never
+      } else if (d.kind === 'polyline' && entity.polyline) {
+        entity.polyline.positions = new ConstantProperty(linePartsAt(d.geometry, height)[d.part]) as never
+      }
+    }
     this.render()
   }
 
@@ -420,14 +482,19 @@ export class DigitalTwinController {
     entities.suspendEvents()
     entities.removeAll()
     this.bottleneckFeatureByEntity.clear()
+    this.bottleneckStyle.clear()
+    this.bottleneckStateKey = ''
     for (const feature of fc?.features ?? []) {
       const p = feature.properties
       const ref: FeatureRef = { feature: { layer: 'bottlenecks', id: p.linkId, properties: p as unknown as Record<string, unknown> }, entities: [] }
       const color = Color.fromCssColorString(BOTTLENECK_COLORS[p.severity] ?? BOTTLENECK_COLORS.LOW)
       const width = BOTTLENECK_WIDTH[p.severity] ?? 5
+      const style = { severity: p.severity, lines: [] as Entity[], label: null as Entity | null }
+      this.bottleneckStyle.set(p.linkId, style)
       for (const part of lineParts(feature.geometry)) {
         const casing = entities.add({ polyline: { positions: part, width: width + 4, clampToGround: true, zIndex: 10, material: Color.BLACK.withAlpha(0.75) } })
         const line = entities.add({ polyline: { positions: part, width, clampToGround: true, zIndex: 11, material: color } })
+        style.lines.push(line)
         for (const e of [casing, line]) {
           ref.entities.push(e)
           this.bottleneckFeatureByEntity.set(e, ref)
@@ -453,7 +520,13 @@ export class DigitalTwinController {
         })
         ref.entities.push(label)
         this.bottleneckFeatureByEntity.set(label, ref)
+        style.label = label
       }
+    }
+    // Re-apply the latest time-aware state to the new entities.
+    if (this.bottleneckTimeState) {
+      const pending = this.bottleneckTimeState
+      queueMicrotask(() => this.setBottleneckTimeState(pending))
     }
     // Connected overflowing nodes, so the user can follow bottleneck → node → flooding.
     for (const node of nodes) {
@@ -478,6 +551,31 @@ export class DigitalTwinController {
     this.render()
   }
 
+  /**
+   * Time-aware bottleneck styling (bottleneck-timeline-v1). ``active`` maps link IDs active at the
+   * selected timestamp to their backend time severity; other potential bottlenecks are dimmed.
+   * ``null`` restores the event-level colours. Only changed styles are applied.
+   */
+  setBottleneckTimeState(active: Record<string, BottleneckSeverity> | null): void {
+    this.bottleneckTimeState = active
+    const key = active === null ? 'event' : Object.entries(active).sort().map(([k, v]) => `${k}:${v}`).join('|')
+    if (key === this.bottleneckStateKey) return
+    this.bottleneckStateKey = key
+    for (const [linkId, style] of this.bottleneckStyle) {
+      const severity = active === null ? style.severity : active[linkId]
+      const color = severity ? Color.fromCssColorString(BOTTLENECK_COLORS[severity]) : Color.fromCssColorString(BOTTLENECK_INACTIVE_COLOR).withAlpha(0.55)
+      const material = new ColorMaterialProperty(color)
+      for (const line of style.lines) {
+        const index = this.selected?.ref.entities.indexOf(line) ?? -1
+        if (this.selected && index >= 0) this.selected.originals[index] = material
+        else if (line.polyline) line.polyline.material = material
+      }
+      if (style.label?.label) style.label.label.fillColor = new ConstantProperty(color) as never
+    }
+    this.stats.bottleneckStateUpdates += 1
+    this.render()
+  }
+
   get bottleneckCount(): number {
     return this.bottleneckFeatures?.features.length ?? 0
   }
@@ -494,6 +592,73 @@ export class DigitalTwinController {
     this.highlight(ref)
     this.callbacks.onSelect(ref.feature)
     return true
+  }
+
+  // ---- scenario comparison (categorical influence per node) -----------------------------------------
+  /**
+   * Shows influence zones of nodes overflowing in both runs, only in the scenario ("additional
+   * model-derived flood influence") or only in the baseline. Zone polygons are created once per
+   * zones collection and only re-styled when the backend node split changes.
+   */
+  setComparison(zones: FeatureCollection | null, split: NodeSplit | null): void {
+    if (zones !== this.comparisonZonesSource) {
+      this.comparisonZonesSource = zones
+      this.comparisonKey = ''
+      const entities = this.comparisonSource.entities
+      entities.suspendEvents()
+      entities.removeAll()
+      this.comparisonZones.clear()
+      for (const feature of zones?.features ?? []) {
+        const nodeId = String(feature.properties.nodeId)
+        const list: Entity[] = []
+        for (const hierarchy of polygonHierarchies(feature.geometry)) list.push(entities.add({ show: false, polygon: { hierarchy, material: Color.TRANSPARENT } }))
+        this.comparisonZones.set(nodeId, list)
+      }
+      entities.resumeEvents()
+    }
+    const key = split ? `${split.both.join()}|${split.scenarioOnly.join()}|${split.baselineOnly.join()}` : 'none'
+    if (key === this.comparisonKey) return
+    this.comparisonKey = key
+    const category = new Map<string, keyof typeof COMPARISON_COLORS>()
+    for (const n of split?.both ?? []) category.set(n, 'both')
+    for (const n of split?.scenarioOnly ?? []) category.set(n, 'scenarioOnly')
+    for (const n of split?.baselineOnly ?? []) category.set(n, 'baselineOnly')
+    this.comparisonSource.entities.suspendEvents()
+    for (const [nodeId, list] of this.comparisonZones) {
+      const c = category.get(nodeId)
+      for (const e of list) {
+        e.show = Boolean(c)
+        if (c && e.polygon) e.polygon.material = new ColorMaterialProperty(Color.fromCssColorString(COMPARISON_COLORS[c]).withAlpha(0.55))
+      }
+    }
+    this.comparisonSource.entities.resumeEvents()
+    this.stats.comparisonUpdates += 1
+    this.render()
+  }
+
+  // ---- performance profiling ----------------------------------------------------------------------
+  /** Frame statistics over ``ms`` of the normal render loop (requires a visible browser tab). */
+  async profileFrames(ms = 5000): Promise<{ frames: number; seconds: number; fps: number; p50FrameMs: number | null; p95FrameMs: number | null; visibility: DocumentVisibilityState }> {
+    const stamps: number[] = []
+    const listener = () => stamps.push(performance.now())
+    this.viewer.scene.postRender.addEventListener(listener)
+    const started = performance.now()
+    await new Promise((resolve) => setTimeout(resolve, ms))
+    this.viewer.scene.postRender.removeEventListener(listener)
+    const seconds = (performance.now() - started) / 1000
+    const deltas = stamps.slice(1).map((t, i) => t - stamps[i]).sort((a, b) => a - b)
+    const pick = (q: number) => (deltas.length ? Math.round(deltas[Math.min(deltas.length - 1, Math.floor(q * deltas.length))] * 10) / 10 : null)
+    return { frames: stamps.length, seconds: Math.round(seconds * 10) / 10, fps: Math.round((stamps.length / seconds) * 10) / 10, p50FrameMs: pick(0.5), p95FrameMs: pick(0.95), visibility: document.visibilityState }
+  }
+
+  /** Entity counts per data source (static layers are loaded once; dynamic ones change). */
+  entityCounts(): Record<string, number> {
+    const counts: Record<string, number> = {}
+    for (let i = 0; i < this.viewer.dataSources.length; i += 1) {
+      const ds = this.viewer.dataSources.get(i)
+      counts[ds.name] = ds.entities.values.length
+    }
+    return counts
   }
 
   // ---- focus (recommendation evidence) -------------------------------------------------------------
@@ -544,6 +709,17 @@ export class DigitalTwinController {
   resetView(): void {
     this.clearSelection()
     this.clearFocus()
+    this.fitWard(0.8)
+  }
+
+  /** Demo reset: default camera, no selection, no temporary highlights (static layers are kept). */
+  resetDemo(): void {
+    this.clearSelection()
+    this.clearFocus()
+    this.setExposedAssets('buildings', null)
+    this.setExposedAssets('roads', null)
+    this.setComparison(this.comparisonZonesSource, null)
+    this.setBottleneckTimeState(null)
     this.fitWard(0.8)
   }
 
@@ -622,8 +798,11 @@ export class DigitalTwinController {
     this.abort.abort()
     this.handler.destroy()
     this.featureByEntity.clear()
+    this.draped.clear()
     this.floodFeatureByEntity.clear()
     this.bottleneckFeatureByEntity.clear()
+    this.bottleneckStyle.clear()
+    this.comparisonZones.clear()
     this.assetEntities.buildings.clear()
     this.assetEntities.roads.clear()
     if (!this.viewer.isDestroyed()) this.viewer.destroy()

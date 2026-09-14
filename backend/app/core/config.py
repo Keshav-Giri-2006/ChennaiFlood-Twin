@@ -62,6 +62,8 @@ class Settings(BaseSettings):
     bottleneck_analysis_version: str = Field(default="bottleneck-analysis-v1", alias="BOTTLENECK_ANALYSIS_VERSION")
     exposure_analysis_version: str = Field(default="exposure-analysis-v1", alias="EXPOSURE_ANALYSIS_VERSION")
     decision_support_version: str = Field(default="decision-support-v1", alias="DECISION_SUPPORT_VERSION")
+    bottleneck_timeline_version: str = Field(default="bottleneck-timeline-v1", alias="BOTTLENECK_TIMELINE_VERSION")
+    scenario_analysis_version: str = Field(default="scenario-analysis-v1", alias="SCENARIO_ANALYSIS_VERSION")
 
     # --- API ----------------------------------------------------------------
     cors_allow_origins: list[str] = Field(

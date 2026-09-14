@@ -1,0 +1,20 @@
+{
+  "demoResults": [
+    {
+      "demoId": "michaung-2023-verified",
+      "label": "Precomputed demonstration result",
+      "description": "Verified EPA SWMM 5.2.4 result of the approved Ward 176 candidate model for the historical Michaung 2023 rainfall (baseline, 1.00x). Loading it re-uses the archived SWMM report and binary output instead of re-running SWMM; all flood, bottleneck, exposure and recommendation products are processed from these real outputs by the normal pipeline.",
+      "scenarioId": "michaung-2023",
+      "modelVersion": "ward176-hydraulic-reconstructed-v1",
+      "report": {
+        "file": "ward176_hydraulic_reconstructed_candidate.rpt",
+        "sha256": "7c4f901b9ec7f8410bfbcdbefb24db9920c136251c5f9e50338178b8ebb339c1"
+      },
+      "output": {
+        "file": "ward176_hydraulic_reconstructed_candidate.out",
+        "sha256": "60edc5391d79ce016f231eb259a5ff1d591650080bd63895299c4a700547cba9"
+      },
+      "verification": "The binary output is byte-identical to a live SWMM 5.2.4 run of the approved model started from the UI on 2026-09-14 (simulation 0ada7d8e-a519-4b42-a5c8-372497b816b6); the report differs only in the analysis start/end timestamps."
+    }
+  ]
+}

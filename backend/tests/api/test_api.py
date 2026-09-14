@@ -62,7 +62,11 @@ def test_unknown_scenario(build_client):
     [
         ({"scenarioId": "unknown-2099"}, 404, "SCENARIO_NOT_FOUND"),
         ({"scenarioId": "michaung-2023", "modelVersion": "not-a-model"}, 404, "MODEL_NOT_FOUND"),
-        ({"scenarioId": "michaung-2023", "parameters": {"rainfallMultiplier": 1.2}}, 422, "UNSUPPORTED_PARAMETER"),
+        ({"scenarioId": "michaung-2023", "parameters": {"rainfallMultiplier": 5}}, 422, "INVALID_PARAMETER"),
+        ({"scenarioId": "michaung-2023", "parameters": {"rainfallMultiplier": -1}}, 422, "INVALID_PARAMETER"),
+        ({"scenarioId": "michaung-2023", "parameters": {"rainfallMultiplier": "1.25"}}, 422, "INVALID_PARAMETER"),
+        ({"scenarioId": "michaung-2023", "parameters": {"rainfallMultiplier": 1.255}}, 422, "INVALID_PARAMETER"),
+        ({"scenarioId": "michaung-2023", "parameters": {"evaporation": 2}}, 422, "UNSUPPORTED_PARAMETER"),
         ({"scenarioId": "michaung-2023", "swmmExecutable": "/bin/sh"}, 422, "INVALID_REQUEST"),
         ({"scenarioId": "../../etc/passwd"}, 422, "INVALID_REQUEST"),
         ({}, 422, "INVALID_REQUEST"),

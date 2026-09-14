@@ -18,6 +18,7 @@ router = APIRouter(prefix="/simulations", tags=["decision-support"])
 
 GEOJSON = "application/geo+json"
 _ERRORS = {404: {"model": ErrorResponse}, 409: {"model": ErrorResponse}, 422: {"model": ErrorResponse}}
+_TIME_ONE = Query(None, min_length=10, max_length=40, description="Reporting timestamp (ISO 8601 with offset); omitted = all timestamps")
 _TIME = Query(None, min_length=10, max_length=40, description="Reporting timestamp (ISO 8601 with offset); omitted = any reporting timestamp of the event")
 
 
@@ -38,6 +39,11 @@ def bottlenecks_geojson(request: Request, simulationId: str, container: Containe
     if request.headers.get("if-none-match") == tag:
         return Response(status_code=304, headers=headers)
     return FileResponse(path, media_type=GEOJSON, headers=headers)
+
+
+@router.get("/{simulationId}/bottlenecks/timeline", responses=_ERRORS, summary="Time-varying state of potential bottlenecks (bottleneck-timeline-v1)")
+def bottleneck_timeline(simulationId: str, time: str | None = _TIME_ONE, container: Container = Depends(get_container)) -> dict:
+    return container.decision.bottleneck_timeline(simulationId, time)
 
 
 @router.get("/{simulationId}/bottlenecks/{linkId}", response_model=BottleneckDetailResponse, responses=_ERRORS, summary="Evidence record of one potential bottleneck")

@@ -23,6 +23,25 @@ export function polygonHierarchies(geometry: Geometry): PolygonHierarchy[] {
   return polygons.map(([outer, ...holes]) => new PolygonHierarchy(positions(openRing(outer)), holes.map((h) => new PolygonHierarchy(positions(openRing(h))))))
 }
 
+type HeightFn = (lon: number, lat: number) => number
+
+/** Polygon rings as explicit 3D positions (terrain-draped by the caller's height function). */
+export function polygonHierarchiesAt(geometry: Geometry, height: HeightFn): PolygonHierarchy[] {
+  const at = (ring: Position[]) => Cartesian3.fromDegreesArrayHeights(openRing(ring).flatMap((p) => [p[0], p[1], height(p[0], p[1])]))
+  const polygons = geometry.type === 'Polygon' ? [geometry.coordinates] : geometry.type === 'MultiPolygon' ? geometry.coordinates : []
+  return polygons.map(([outer, ...holes]) => new PolygonHierarchy(at(outer), holes.map((h) => new PolygonHierarchy(at(h)))))
+}
+
+/** Line parts as explicit 3D positions (terrain-draped by the caller's height function). */
+export function linePartsAt(geometry: Geometry, height: HeightFn): Cartesian3[][] {
+  const at = (coords: Position[]) => Cartesian3.fromDegreesArrayHeights(coords.flatMap((p) => [p[0], p[1], height(p[0], p[1])]))
+  if (geometry.type === 'LineString') return [at(geometry.coordinates)]
+  if (geometry.type === 'MultiLineString') return geometry.coordinates.map(at)
+  if (geometry.type === 'Polygon') return geometry.coordinates.map(at)
+  if (geometry.type === 'MultiPolygon') return geometry.coordinates.flat().map(at)
+  return []
+}
+
 export function lineParts(geometry: Geometry): Cartesian3[][] {
   if (geometry.type === 'LineString') return [positions(geometry.coordinates)]
   if (geometry.type === 'MultiLineString') return geometry.coordinates.map(positions)

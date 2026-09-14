@@ -344,6 +344,11 @@ def analyse_bottlenecks(
             "modelComponentsWithOutfall": sum(1 for c in components.components if c["outfalls"]),
         },
         "bottlenecks": records,
+        "derivedFullFlowCapacities": {
+            lid: round(link_flow[lid]["maximumFlowCms"] / link_flow[lid]["maxOverFullFlow"], 4)
+            for lid in inp.conduits
+            if (link_flow[lid]["maxOverFullFlow"] or 0) >= DERIVED_CAPACITY_MIN_RATIO
+        },
         "numericalDiagnostics": numerical,
         "limitations": [
             "Evidence is from one uncalibrated SWMM simulation of a reconstructed, fragmented network with provisional outfalls.",

@@ -14,7 +14,7 @@ API (app/api) → services (app/services) → SWMM / GIS / analysis → reposito
 |---|---|
 | `app/main.py` | App factory, CORS, request IDs, lifespan (startup recovery) |
 | `app/core/` | Settings (env-based), logging, structured errors, dependency container |
-| `app/api/routes/` | `health`, `scenarios`, `simulations`, `flood`, `decision`, `gis` |
+| `app/api/routes/` | `health`, `scenarios`, `simulations`, `flood`, `decision`, `demo`, `comparisons`, `gis` |
 | `app/schemas/` | Pydantic request/response models (contract field names) |
 | `app/models/simulation.py` | Status/stage enums and the allowed state transitions |
 | `app/simulation/` | `.inp` reader, rainfall reader, validator, SWMM runner, `.rpt` parser, binary `.out` reader |
@@ -23,7 +23,9 @@ API (app/api) → services (app/services) → SWMM / GIS / analysis → reposito
 | `app/gis/` | CRS transformation, model↔source ID mapping, web GeoJSON builder |
 | `app/repositories/` | SQLAlchemy simulation metadata, workspace/result stores, model/scenario registry |
 | `config/models.json` | Approved model registry (file, pinned SHA-256, expected element counts, limitations) |
-| `config/scenarios.json` | Scenario registry (rainfall source file, checksum, model binding) |
+| `config/scenarios.json` | Scenario registry (rainfall source file, checksum, model binding, what-if rainfall multiplier range) |
+| `config/demo.json` | Verified precomputed demonstration result (archived SWMM outputs, SHA-256 pinned) |
+| `Dockerfile` | Container image with EPA SWMM 5.2.4 built from source (see `docs/DOCKER_DEPLOYMENT.md`) |
 | `runtime/` (git-ignored) | SQLite DB, `simulation_runs/<id>/`, `results/<id>/`, `web_assets/` |
 
 ## Setup (Windows, PowerShell)
@@ -113,9 +115,15 @@ criterion, threshold or rule changes, otherwise cached products are reused. See 
 Endpoints: `/simulations/{id}/bottlenecks[/geojson|/{linkId}]`, `/exposure`, `/exposure/{buildings|roads}?time=`,
 `/recommendations`; `/risk` returns `404 RISK_PRODUCT_NOT_AVAILABLE` (API contract §83).
 
+## Demo result, what-if scenarios, comparison (Prompt 4)
+
+* `POST /demo/michaung-2023-verified/load` registers the verified archived SWMM 5.2.4 result and processes it through the normal pipeline without running SWMM; later loads re-use it.
+* `POST /simulations` accepts `{"parameters": {"rainfallMultiplier": 0.5–2.0}}`; only the workspace copy's rainfall series is scaled (1.00× reproduces the approved model byte-for-byte). See `docs/SCENARIO_ANALYSIS_METHOD.md`.
+* `GET /simulations/{id}/bottlenecks/timeline` — time-varying potential-bottleneck state; `GET /comparisons?baseline=&scenario=` — cached scenario comparison.
+
 ## Known limitations (this phase)
 
 * No flood depth/extent or risk score — the API returns `null` with `available: false` (or `404 FLOOD_PRODUCT_NOT_AVAILABLE` / `RISK_PRODUCT_NOT_AVAILABLE`). Bottlenecks, exposure and recommendations are model-derived decision support from one uncalibrated run.
-* `parameters` (e.g. rainfall multiplier) are rejected with `UNSUPPORTED_PARAMETER`.
+* Only the registered `rainfallMultiplier` parameter is supported; other parameters are rejected with `UNSUPPORTED_PARAMETER`.
 * Cancellation is not implemented.
 * On memory-constrained hosts, numpy/OpenBLAS is limited to one thread (`app/__init__.py`).

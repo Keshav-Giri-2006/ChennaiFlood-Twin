@@ -22,7 +22,10 @@ export class ErrorBoundary extends Component<Props, { error: Error | null }> {
       return (
         <div className="panel error-panel" role="alert">
           <strong>{this.props.label} unavailable</strong>
-          <p className="small">{this.state.error.message}</p>
+          <p className="small">This part of the interface hit an unexpected error. The rest of the Digital Twin keeps working.</p>
+          <button type="button" onClick={() => this.setState({ error: null })}>
+            Retry
+          </button>
         </div>
       )
     }

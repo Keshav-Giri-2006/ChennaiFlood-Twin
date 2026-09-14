@@ -1,10 +1,11 @@
 import { friendlyErrorMessage } from '../../api/client'
 import { BOTTLENECK_COLORS } from '../../cesium/styles'
-import { useBottleneckGeojson, useBottlenecks, useKpis } from '../../hooks/queries'
+import { useBottleneckGeojson, useBottleneckTimeline, useBottlenecks, useKpis } from '../../hooks/queries'
+import { useActiveTimeline } from '../../hooks/useTimeline'
 import { useSimulationStore } from '../../state/simulationStore'
 import { useViewerStore } from '../../state/viewerStore'
 import type { Bottleneck } from '../../types/api'
-import { formatLitres, formatNumber } from '../../utils/format'
+import { formatLitres, formatNumber, formatTimestampUtc } from '../../utils/format'
 import { useDigitalTwin } from '../viewer/controllerContext'
 
 const CONCERN: Record<string, string> = { HIGH: 'High diagnostic concern', MODERATE: 'Moderate diagnostic concern', LOW: 'Low diagnostic concern' }
@@ -56,6 +57,8 @@ export function HydraulicsPanel() {
           View Hotspots
         </button>
       </div>
+      <BottleneckNow onView={open} bottlenecks={doc.bottlenecks} />
+      <p className="kpi-group-title">Whole simulated event</p>
       <dl className="kv">
         <dt>Conduits screened</dt>
         <dd>{doc.summary.conduitsScreened}</dd>
@@ -143,5 +146,75 @@ export function HydraulicsPanel() {
         </dl>
       </details>
     </div>
+  )
+}
+
+/** Time-aware view: potential bottlenecks hydraulically loaded at the selected SWMM timestamp. */
+function BottleneckNow({ bottlenecks, onView }: { bottlenecks: Bottleneck[]; onView: (b: Bottleneck) => void }) {
+  const { simulationId, index, entry } = useActiveTimeline()
+  const timeline = useBottleneckTimeline(simulationId)
+  if (!simulationId || index === null || !entry) return null
+  if (timeline.isPending) return <p className="muted small">Loading time-varying hydraulic state…</p>
+  if (timeline.isError) {
+    return (
+      <p className="error-text">
+        Time-varying bottleneck state unavailable: {friendlyErrorMessage(timeline.error)}{' '}
+        <button type="button" className="link" onClick={() => void timeline.refetch()}>
+          Retry
+        </button>
+      </p>
+    )
+  }
+  const now = timeline.data.entries[index]
+  if (!now) return null
+  const byId = new Map(bottlenecks.map((b) => [b.linkId, b]))
+  return (
+    <section className="now-box" aria-label="Hydraulic state at the selected timestamp">
+      <p className="kpi-group-title">
+        At {formatTimestampUtc(now.time)} <span className="muted small">(follows timeline; SWMM 30-min sample)</span>
+      </p>
+      <dl className="kv">
+        <dt>Active potential bottlenecks</dt>
+        <dd>{now.activeCount}</dd>
+        <dt>Highest severity</dt>
+        <dd>{now.highestSeverity ? <SeverityBadge severity={now.highestSeverity} /> : 'none'}</dd>
+        <dt>Most loaded conduit</dt>
+        <dd>
+          {now.mostLoaded ? (
+            <>
+              {now.mostLoaded.linkId} · {formatNumber(now.mostLoaded.utilization * 100, 0)}% of full-flow capacity
+              {!now.mostLoaded.isPotentialBottleneck && <span className="muted small"> (not a potential bottleneck)</span>}
+            </>
+          ) : (
+            '—'
+          )}
+        </dd>
+      </dl>
+      {now.active.length > 0 ? (
+        <ul className="item-list" aria-label="Active potential bottlenecks">
+          {now.active.map((a) => (
+            <li key={a.linkId} className="active-bn">
+              <span className="item-head">
+                <SeverityBadge severity={a.severity} />
+                <strong>{a.linkId}</strong>
+                <span className="muted small">GCC ObjectID {String(a.sourceObjectId)}</span>
+              </span>
+              <span className="small">
+                {a.criteria.full ? 'full' : 'not full'}
+                {a.utilization !== null && ` · flow ${formatNumber(a.utilization * 100, 0)}% of capacity`}
+                {a.floodingNodeIds.length > 0 && ` · ${a.floodingNodeIds.join(', ')} overflowing`}
+              </span>
+              {byId.has(a.linkId) && (
+                <button type="button" className="link" onClick={() => onView(byId.get(a.linkId) as Bottleneck)}>
+                  View on map
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="muted small">No potential bottleneck is full or above its full-flow capacity at this timestamp.</p>
+      )}
+    </section>
   )
 }

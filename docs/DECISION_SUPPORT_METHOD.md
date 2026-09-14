@@ -67,6 +67,24 @@ The undirected node–link graph of the current `.inp` has 48 connected componen
 
 **Investigated links:** C162 (35.7 % time-step critical, Max/Full Flow 0.11, never full), C180 (33.0 %), C175 (17.9 %), C086 (12.6 %) and C166 (instability index 11, component without outfall) meet **no** loading criterion and are *not* potential bottlenecks. This supports the earlier investigations: their behaviour is numerical/elevation-data related, not capacity related.
 
+### 3.2 Time-varying state (`bottleneck-timeline-v1`, added 2026-09-14)
+
+A separate, additive product; the event-level classification above is unchanged. For every 30-minute SWMM reporting sample t (binary output link variables) and each event-level potential bottleneck:
+
+| Criterion | Definition |
+|---|---|
+| T-FULL | SWMM link capacity variable (fraction of conduit filled) ≥ 0.999 |
+| T-OVER | abs(flow) > full-flow capacity, back-calculated from the report (maximum flow ÷ Max/Full Flow; only where that ratio ≥ 0.5, otherwise not evaluated) |
+| T-FLOOD | an end node is in flood-processing-v1 state FLOODING at t |
+
+- Active at t = event-level potential bottleneck **and** (T-FULL or T-OVER). Conduits that are not event-level potential bottlenecks are never activated.
+- Severity at t = HIGH (3) / MODERATE (2) / LOW (1) criteria, **never above the event-level severity** (so the no-outlet cap and confidence safeguards carry over).
+- SWMM's capacity-limited condition (L1) exists only as event hours and is not evaluated per sample.
+- "Most loaded conduit" = highest abs(flow) ÷ full-flow capacity among the 15 conduits with a back-calculable capacity.
+- API: `GET /simulations/{id}/bottlenecks/timeline[?time=]`; the Hydraulics panel and the map follow the timeline without moving the camera.
+
+Michaung baseline (demo result): 163 of 190 timestamps have ≥ 1 active potential bottleneck (first 2023-12-02 14:00 UTC). **C169 is active HIGH in 19 samples = 9.5 h** (consistent with the report's 9.47 h capacity limited / full at both ends): 03 Dec 18:30–19:00 and 20:30 → 04 Dec 03:30 UTC plus two isolated samples later on 04 Dec, with peak utilisation 2.20× at 2023-12-03 22:00 UTC; it is inactive at 19:30–20:00 UTC (at 19:30 not full, 85 % of capacity). At the peak, 12 potential bottlenecks are active (C169 HIGH, others LOW) and C169 is the most loaded conduit. The no-outlet conduits C020/C021 are active (LOW) for 81.5 h.
+
 ## 4. Model-derived exposure (`exposure-analysis-v1`)
 
 - **Exposed** = a GCC building footprint or carriageway polygon intersects (area > 0.01 m², a numerical tolerance for shared zone edges) the flood influence zone of a node in state `FLOODING` at the considered timestamp(s).

@@ -28,16 +28,21 @@ from app.models.simulation import (
     SimulationStage,
     SimulationStatus,
 )
-from app.repositories.registry import ModelDefinition, Registry, ScenarioDefinition
+from app.repositories.registry import DemoResultDefinition, ModelDefinition, Registry, ScenarioDefinition
 from app.repositories.results import ResultStore, WorkspaceStore, validate_simulation_id
 from app.repositories.simulations import SimulationRepository
 from app.services.decision_service import DecisionProcessingError
 from app.simulation.output_reader import OutputFormatError, read_output
 from app.simulation.report_parser import ReportParseError, parse_report
-from app.simulation.runner import SwmmExecutionError, SwmmRunner, SwmmUnavailableError, resolve_swmm_executable
+from app.simulation.inp_reader import read_inp
+from app.simulation.rainfall import RainfallSeries
+from app.simulation.runner import PrecomputedResultRunner, SwmmExecutionError, SwmmRunner, SwmmUnavailableError, resolve_swmm_executable
+from app.simulation.scenario_transform import ScenarioParameterError, ScenarioTransformError, apply_rainfall_multiplier, validate_multiplier, verify_transform
 from app.simulation.validator import ValidationFailure, model_path_for, rainfall_path_for, validate_inputs
 from app.utils.files import sha256_file, write_json_atomic
 from app.utils.timeutil import to_iso_z, utcnow
+
+EXECUTION_PRECOMPUTED = "precomputed-demo"
 
 logger = logging.getLogger("app.simulation")
 
@@ -121,12 +126,7 @@ class SimulationService:
             raise NotFoundError(ErrorCode.MODEL_NOT_FOUND, "The requested model version does not exist or is not approved.", details={"modelVersion": version})
         if version not in scenario.compatible_models:
             raise UnprocessableError(ErrorCode.MODEL_NOT_COMPATIBLE, "The scenario cannot be run with the requested model version.", details={"scenarioId": scenario_id, "modelVersion": version})
-        if parameters:
-            raise UnprocessableError(
-                ErrorCode.UNSUPPORTED_PARAMETER,
-                "Scenario parameters are not supported yet; the historical scenario runs unmodified.",
-                details={"parameters": sorted(parameters)},
-            )
+        normalized = self.normalize_parameters(scenario, parameters)
         if not model_path_for(model, self.settings.models_dir).is_file():
             raise ServiceUnavailableError(ErrorCode.MODEL_NOT_FOUND, "The approved model file is not available on the server.")
         if not rainfall_path_for(scenario, self.settings.raw_dir).is_file():
@@ -142,12 +142,55 @@ class SimulationService:
             status=SimulationStatus.CREATED,
             stage=SimulationStage.QUEUED,
             progress=STATUS_PROGRESS[SimulationStatus.CREATED],
+            parameters=normalized,
+            created_at=now,
+            updated_at=now,
+            artifacts={"executionMode": "swmm"},
+        )
+        self.repository.add(record)
+        log_event(logger, "simulation.created", simulation_id=record.simulation_id, scenario_id=scenario_id, model_version=version, parameters=normalized or None)
+        self.executor.submit(self.execute, record.simulation_id)
+        return record
+
+    def normalize_parameters(self, scenario: ScenarioDefinition, parameters: dict[str, Any] | None) -> dict[str, Any]:
+        """Only registered what-if parameters are accepted (scenario-analysis-v1: rainfallMultiplier)."""
+        if not parameters:
+            return {}
+        spec = scenario.what_if
+        allowed = {spec["parameter"]} if spec else set()
+        unknown = sorted(set(parameters) - allowed)
+        if unknown:
+            raise UnprocessableError(
+                ErrorCode.UNSUPPORTED_PARAMETER,
+                "Only the documented rainfall multiplier parameter is supported for this scenario.",
+                details={"unsupported": unknown, "supported": sorted(allowed)},
+            )
+        assert spec is not None
+        try:
+            multiplier = validate_multiplier(parameters[spec["parameter"]], spec)
+        except ScenarioParameterError as exc:
+            raise UnprocessableError(ErrorCode.INVALID_PARAMETER, str(exc), details=exc.details) from exc
+        return {spec["parameter"]: multiplier}
+
+    def create_precomputed(self, demo: DemoResultDefinition) -> SimulationRecord:
+        """Register the verified precomputed demonstration result and process it through the normal pipeline."""
+        now = utcnow()
+        record = SimulationRecord(
+            simulation_id=str(uuid.uuid4()),
+            scenario_id=demo.scenario_id,
+            model_version=demo.model_version,
+            processing_version=self.settings.processing_version,
+            application_version=APP_VERSION,
+            status=SimulationStatus.CREATED,
+            stage=SimulationStage.QUEUED,
+            progress=STATUS_PROGRESS[SimulationStatus.CREATED],
             parameters={},
             created_at=now,
             updated_at=now,
+            artifacts={"executionMode": EXECUTION_PRECOMPUTED, "demoId": demo.demo_id},
         )
         self.repository.add(record)
-        log_event(logger, "simulation.created", simulation_id=record.simulation_id, scenario_id=scenario_id, model_version=version)
+        log_event(logger, "simulation.created", simulation_id=record.simulation_id, scenario_id=demo.scenario_id, execution_mode=EXECUTION_PRECOMPUTED)
         self.executor.submit(self.execute, record.simulation_id)
         return record
 
@@ -185,7 +228,9 @@ class SimulationService:
         scenario = self.registry.scenarios[record.scenario_id]
         model = self.registry.models[record.model_version]
         workspace: Path | None = None
-        artifacts: dict[str, Any] = {}
+        artifacts: dict[str, Any] = dict(record.artifacts)
+        precomputed = artifacts.get("executionMode") == EXECUTION_PRECOMPUTED
+        multiplier = record.parameters.get("rainfallMultiplier")
         started = utcnow()
         try:
             record = self._advance(simulation_id, SimulationStatus.VALIDATING, started_at=started)
@@ -193,10 +238,17 @@ class SimulationService:
                 validated = validate_inputs(scenario, model, self.settings.models_dir, self.settings.raw_dir)
             except ValidationFailure as exc:
                 raise _StageFailure(exc.code, exc.message, exc.details) from exc
-            try:
-                runner = self.runner_factory(self.settings)
-            except SwmmUnavailableError as exc:
-                raise _StageFailure(ErrorCode.SWMM_UNAVAILABLE, "The SWMM simulation engine is not available on the server.") from exc
+            if precomputed:
+                demo = self.registry.demo_results.get(str(artifacts.get("demoId")))
+                if demo is None or demo.scenario_id != record.scenario_id or demo.model_version != record.model_version:
+                    raise _StageFailure(ErrorCode.RESULT_NOT_FOUND, "The precomputed demonstration result is not registered for this scenario and model.")
+                models_dir = self.settings.models_dir
+                runner: Any = PrecomputedResultRunner(models_dir / demo.report["file"], demo.report["sha256"], models_dir / demo.output["file"], demo.output["sha256"])
+            else:
+                try:
+                    runner = self.runner_factory(self.settings)
+                except SwmmUnavailableError as exc:
+                    raise _StageFailure(ErrorCode.SWMM_UNAVAILABLE, "The SWMM simulation engine is not available on the server.") from exc
             self.repository.update_fields(simulation_id, model_sha256=validated.model_sha256, rainfall_sha256=validated.rainfall_sha256)
 
             record = self._advance(simulation_id, SimulationStatus.PREPARING)
@@ -206,7 +258,11 @@ class SimulationService:
             shutil.copyfile(validated.model_path, input_file)
             if sha256_file(input_file) != model.sha256:
                 raise _StageFailure(ErrorCode.MODEL_VALIDATION_FAILED, "The prepared model input does not match the approved model.")
-            artifacts = {name: self.workspaces.key(simulation_id, name) for name in ("input.inp", "report.rpt", "output.out", "stdout.log", "stderr.log", "metadata.json")}
+            rainfall = validated.rainfall
+            if multiplier is not None:
+                # scenario-analysis-v1: transform only the isolated workspace copy.
+                rainfall = self._prepare_rainfall_scenario(input_file, scenario, model, validated, float(multiplier), artifacts)
+            artifacts.update({name: self.workspaces.key(simulation_id, name) for name in ("input.inp", "report.rpt", "output.out", "stdout.log", "stderr.log", "metadata.json")})
             self.repository.update_fields(simulation_id, artifacts=artifacts)
             self._write_metadata(simulation_id, record, scenario, model, validated.checks, None)
 
@@ -248,7 +304,7 @@ class SimulationService:
                     report=report,
                     output=output,
                     inp=validated.inp,
-                    rainfall=validated.rainfall,
+                    rainfall=rainfall,
                 )
             except (ReportParseError, OutputFormatError) as exc:
                 raise _StageFailure(ErrorCode.PROCESSING_FAILED, "SWMM results could not be parsed.", {"reason": str(exc)}) from exc
@@ -279,6 +335,49 @@ class SimulationService:
         except Exception as exc:  # noqa: BLE001 - must never leave a run in an active state
             logger.exception("simulation.unexpected_error simulation_id=%s", simulation_id)
             self._fail(simulation_id, ErrorCode.INTERNAL_ERROR, "The simulation failed because of an internal error.", {"exception": type(exc).__name__}, scenario, model)
+
+    def _prepare_rainfall_scenario(
+        self, input_file: Path, scenario: ScenarioDefinition, model: ModelDefinition, validated: Any, multiplier: float, artifacts: dict[str, Any]
+    ) -> RainfallSeries:
+        binding = scenario.compatible_models[model.model_version]
+        master_bytes = validated.model_path.read_bytes()
+        master_text = master_bytes.decode("utf-8")
+        try:
+            transform = apply_rainfall_multiplier(master_text, binding["timeseriesName"], multiplier, validated.rainfall.interval_hours)
+            verification = verify_transform(master_text, transform.text, binding["timeseriesName"], multiplier)
+        except ScenarioTransformError as exc:
+            raise _StageFailure(ErrorCode.MODEL_VALIDATION_FAILED, "The rainfall scenario could not be applied to the model copy.", {"reason": str(exc)}) from exc
+        input_file.write_bytes(transform.text.encode("utf-8"))
+        transformed_sha = sha256_file(input_file)
+        if multiplier == 1.0 and transformed_sha != model.sha256:
+            raise _StageFailure(ErrorCode.MODEL_VALIDATION_FAILED, "A 1.00x rainfall scenario must reproduce the approved model exactly.")
+        inp = read_inp(input_file)
+        series = inp.timeseries.get(binding["timeseriesName"], [])
+        if [r.time for r in series] != validated.rainfall.times or len(inp.node_ids) != len(validated.inp.node_ids) or len(inp.link_ids) != len(validated.inp.link_ids):
+            raise _StageFailure(ErrorCode.MODEL_VALIDATION_FAILED, "The transformed model failed structural validation.")
+        rainfall = RainfallSeries(times=list(validated.rainfall.times), intensities_mm_hr=[r.value for r in series], interval_minutes=validated.rainfall.interval_minutes, metadata=validated.rainfall.metadata)
+        artifacts["scenarioRun"] = {
+            "scenarioAnalysisVersion": self.settings.scenario_analysis_version,
+            "type": "rainfall-multiplier",
+            "parentScenarioId": scenario.scenario_id,
+            "rainfallMultiplier": multiplier,
+            "rainfallSource": {"name": scenario.source["name"], "file": Path(scenario.rainfall["rawFile"]).name, "sha256": validated.rainfall_sha256},
+            "baselineModelSha256": model.sha256,
+            "transformedModelSha256": transformed_sha,
+            "transformedModelIdenticalToBaseline": transformed_sha == model.sha256,
+            "transformation": "intensity(t) x multiplier, rounded to 6 decimals; timestamps, interval and all other model lines unchanged",
+            "verification": verification,
+            "rainfall": {
+                "records": transform.records,
+                "baselineTotalMm": round(transform.baseline_total_mm, 3),
+                "scenarioTotalMm": round(transform.transformed_total_mm, 3),
+                "baselinePeakMmHr": round(transform.baseline_peak_mm_hr, 3),
+                "scenarioPeakMmHr": round(transform.transformed_peak_mm_hr, 3),
+            },
+            "createdAt": to_iso_z(utcnow()),
+        }
+        log_event(logger, "simulation.scenario_prepared", multiplier=multiplier, transformed_sha256=transformed_sha[:12])
+        return rainfall
 
     def _fail(self, sid: str, code: str, message: str, details: Any, scenario: ScenarioDefinition, model: ModelDefinition) -> None:
         current = self.repository.get(sid)
@@ -313,7 +412,9 @@ class SimulationService:
             "completedAt": to_iso_z(fresh.completed_at),
             "model": {"file": model.inp_file, "sha256": fresh.model_sha256, "engine": model.engine, "engineVersion": model.engine_version},
             "rainfall": {"file": Path(scenario.rainfall["rawFile"]).name, "sha256": fresh.rainfall_sha256, "source": scenario.source["name"]},
-            "inputPreparation": scenario.compatible_models[model.model_version]["inputPreparation"],
+            "inputPreparation": "rainfall-multiplier" if fresh.parameters.get("rainfallMultiplier") is not None else scenario.compatible_models[model.model_version]["inputPreparation"],
+            "executionMode": fresh.artifacts.get("executionMode", "swmm"),
+            "scenarioRun": fresh.artifacts.get("scenarioRun"),
             "parameters": fresh.parameters,
             "swmm": {"exitCode": fresh.swmm_exit_code, "elapsedSeconds": fresh.swmm_elapsed_seconds, "engineVersion": fresh.engine_version},
             "validationChecks": checks,

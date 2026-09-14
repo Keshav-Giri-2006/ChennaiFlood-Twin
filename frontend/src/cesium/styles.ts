@@ -37,6 +37,15 @@ export const BOTTLENECK_COLORS: Record<string, string> = {
   MODERATE: '#a855f7',
   LOW: '#facc15',
 }
+/** Potential bottleneck not loaded at the selected timestamp (time-aware view). */
+export const BOTTLENECK_INACTIVE_COLOR = '#94a3b8'
+
+/** Scenario comparison categories (categorical: no cross-run severity scale). */
+export const COMPARISON_COLORS = {
+  both: '#60a5fa',
+  scenarioOnly: '#f43f5e',
+  baselineOnly: '#a3e635',
+}
 export const BOTTLENECK_WIDTH: Record<string, number> = { HIGH: 9, MODERATE: 7, LOW: 5 }
 
 /** Model-derived exposure highlight (assets intersecting influence zones of overflowing nodes). */
