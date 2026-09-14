@@ -4,13 +4,14 @@ import { useDigitalTwin } from '../components/viewer/controllerContext'
 import { useFloodStore } from '../state/floodStore'
 import { useSimulationStore } from '../state/simulationStore'
 import { useViewerStore } from '../state/viewerStore'
-import type { SimulationStatus } from '../types/api'
+import type { DemoResult, SimulationStatus } from '../types/api'
 import { queryKeys } from './queries'
 
 /**
  * Returns the UI to a known demo state: default camera and layers, no selection or temporary
- * highlights, baseline scenario selection, normal opacity and the first timestamp.
- * Nothing on the backend (results, runs, data) is deleted.
+ * highlights, baseline scenario selection, normal opacity and the first timestamp. The displayed result
+ * returns to the verified precomputed demonstration result when it has been loaded, otherwise to the latest
+ * completed 1.00x baseline. Nothing on the backend (results, runs, data) is deleted.
  */
 export function useResetDemo(): () => void {
   const controller = useDigitalTwin()
@@ -25,9 +26,11 @@ export function useResetDemo(): () => void {
     sim.setRainfallMultiplier(1)
     sim.setComparison(null, null)
     if (sim.activeSimulationId && !sim.runningSimulationId) {
+      const demo = client.getQueryData<DemoResult[]>(['demo'])?.find((d) => d.scenarioId === sim.scenarioId && d.available && d.loadedSimulationId)
       const status = client.getQueryData<SimulationStatus>(queryKeys.simulation(sim.activeSimulationId))
-      // Return to the baseline result; the latest completed 1.00x run is selected automatically.
-      if ((status?.parameters?.rainfallMultiplier ?? 1) !== 1) sim.setActiveSimulation(null)
+      if (demo?.loadedSimulationId) sim.setActiveSimulation(demo.loadedSimulationId)
+      // Otherwise return to the baseline result; the latest completed 1.00x run is selected automatically.
+      else if ((status?.parameters?.rainfallMultiplier ?? 1) !== 1) sim.setActiveSimulation(null)
     }
     controller?.resetDemo()
   }, [controller, client])

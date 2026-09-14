@@ -54,9 +54,23 @@ npm run build
   - Shaded polygons are nearest-node influence zones, not flood extent, and there is no ground depth (see `docs/FLOOD_PROCESSING_METHOD.md`).
 - **Base map:** OpenStreetMap tiles (no Cesium Ion token needed).
 
-## Demo flow (Prompt 4)
+## Demo flow
 
-Load verified demo result → play the timeline → Go to Peak Flood → Hydraulics (time-aware potential bottlenecks, C169 evidence) → Exposure → Actions → Compare (baseline 1.00× vs a 1.25× what-if run: run it or load the stored result) → Methodology & Limitations → Reset demo. The header shows backend connectivity; errors offer Retry / Reload result / Restart 3D viewer.
+Load verified demo result → play the timeline → Go to Peak Flood (Flood tab: rainfall / overflow chart) → Hydraulics (time-aware potential bottlenecks, C169 evidence) → Exposure → Actions → switch to 1.25× (run or load the stored result) → Compare (scenario overview chart 1.00× / 1.25× / 1.50×, changes, comparison layer) → Methodology & Limitations (presenter questions) → Reset demo (returns to the verified demo result).
+
+- **Header:** backend connectivity and the displayed result (multiplier + source).
+- **Map legend:** follows the visible layers.
+- **Errors:** offer Retry / Reload result / Resume rendering / Restart 3D viewer.
+
+The full runbook is in the root [`README.md`](../README.md).
+
+## Charts
+
+`src/components/charts/` contains dependency-free SVG charts:
+- `EventCharts` plots the backend flood timeline (rainfall applied in SWMM, simulated system overflow rate).
+- `ScenarioOverviewChart` plots values from backend comparisons.
+
+Neither computes scientific values; only axis scaling and bar lengths are derived.
 
 ## Container build
 

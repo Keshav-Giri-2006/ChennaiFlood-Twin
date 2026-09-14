@@ -8,11 +8,13 @@ same code works on a Windows workstation and inside a Linux container.
 
 from __future__ import annotations
 
+import json
 from functools import lru_cache
 from pathlib import Path
+from typing import Annotated
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 # backend/app/core/config.py -> parents[3] is the repository root.
 _BACKEND_DIR = Path(__file__).resolve().parents[2]
@@ -66,7 +68,8 @@ class Settings(BaseSettings):
     scenario_analysis_version: str = Field(default="scenario-analysis-v1", alias="SCENARIO_ANALYSIS_VERSION")
 
     # --- API ----------------------------------------------------------------
-    cors_allow_origins: list[str] = Field(
+    # NoDecode: the environment value is a comma-separated list (or a JSON list), parsed by the validator below.
+    cors_allow_origins: Annotated[list[str], NoDecode] = Field(
         default=["http://localhost:5173", "http://127.0.0.1:5173"],
         alias="CORS_ALLOW_ORIGINS",
     )
@@ -82,7 +85,7 @@ class Settings(BaseSettings):
         if isinstance(value, str):
             value = value.strip()
             if value.startswith("["):
-                return value  # JSON list, let pydantic parse it
+                return json.loads(value)
             return [v.strip() for v in value.split(",") if v.strip()]
         return value
 

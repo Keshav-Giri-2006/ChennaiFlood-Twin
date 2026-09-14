@@ -143,3 +143,14 @@ def test_no_hardcoded_windows_paths_in_application_code():
             if pattern.search(line) and "http" not in line:
                 offenders.append(f"{path.name}:{lineno}")
     assert offenders == []
+
+
+@pytest.mark.parametrize(
+    "raw",
+    ["http://localhost:8080,http://127.0.0.1:8080", " http://localhost:8080 , http://127.0.0.1:8080 ", '["http://localhost:8080", "http://127.0.0.1:8080"]'],
+)
+def test_cors_origins_from_environment_accept_comma_separated_and_json(monkeypatch: pytest.MonkeyPatch, raw: str):
+    # The container (compose.yaml) and .env.example pass a comma-separated list; this used to fail at startup.
+    monkeypatch.setenv("CORS_ALLOW_ORIGINS", raw)
+    settings = Settings(_env_file=None)
+    assert settings.cors_allow_origins == ["http://localhost:8080", "http://127.0.0.1:8080"]

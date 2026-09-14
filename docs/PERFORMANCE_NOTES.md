@@ -61,3 +61,22 @@ Not introduced. Measurements show buildings are not the bottleneck (hiding them 
 ## Reproducing on the presentation machine
 
 In a visible browser with the dev build, open the developer console and run `await window.__digitalTwin.profileFrames(6000)` (dev builds only). Compare with the table above; if fps is low, first check that hardware acceleration is enabled in the browser.
+
+## Prompt 5 re-check (2026-09-14)
+
+The same headless-Edge profiler was run against the dev app, now with the new SVG charts, map legend and header chip. The static rendering mode `terrain-sampled-primitives` is unchanged.
+
+The machine was also running the Docker Desktop VM, so the environment ceiling was lower and noisier than in Prompt 4.
+
+| Run | All layers | All layers + playback 1× | Terrain + imagery only |
+|---|---|---|---|
+| 1 | — | 20.6 fps (p50 41 ms) | — |
+| 2 | 21.0 fps (p50 47 ms); repeat 13.5 fps | 14.4 fps | 18.2 fps |
+
+- **Layers are not the limit:** layer toggles stay within the environment noise. For example, only terrain gave 18.2 fps while all layers gave 21.0 fps in the same run.
+- **Static layers load once:** `staticLayerLoads` stays 5 through playback, scenario switches, comparison and reset.
+- **Flood updates stay cheap:** slice updates take ≈ 0.4 ms.
+- **Chart cost is small:** the charts re-render once per timeline step (≤ 190 SVG rects).
+- **3D Tiles are still not needed.**
+- **Production bundle:** 4.52 MB JS (1.23 MB gzip), nginx-served with gzip and immutable asset caching in Docker.
+- **Presentation machine:** measure there with `await window.__digitalTwin.profileFrames(6000)` in the dev build (see *Reproducing* above). Close Docker Desktop if Option A is used, since its VM competes for CPU/GPU.

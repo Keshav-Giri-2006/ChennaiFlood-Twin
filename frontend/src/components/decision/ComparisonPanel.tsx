@@ -6,6 +6,7 @@ import { useSimulationStore } from '../../state/simulationStore'
 import { useViewerStore } from '../../state/viewerStore'
 import type { ComparisonMetric, SimulationStatus } from '../../types/api'
 import { formatNumber, formatTimestampUtc } from '../../utils/format'
+import { ScenarioOverviewChart } from '../charts/ScenarioOverviewChart'
 import { SeverityBadge } from './HydraulicsPanel'
 
 const UNIT: Record<string, string> = { 'm3/s': 'm³/s', m2: 'm²', count: '', hr: 'h' }
@@ -102,6 +103,14 @@ export function ComparisonPanel() {
       )}
       {runningSimulationId && <p className="muted small">A simulation is running; it appears here when completed.</p>}
       {create.isError && <p className="error-text">{friendlyErrorMessage(create.error)}</p>}
+
+      {comparisonBaselineId && scenario.data?.whatIf && (
+        <>
+          <h4 className="kpi-group-title">Scenario overview</h4>
+          <ScenarioOverviewChart baselineId={comparisonBaselineId} runs={whatIfs} whatIf={scenario.data.whatIf} />
+          <h4 className="kpi-group-title">Detailed comparison</h4>
+        </>
+      )}
 
       {comparison.isPending && comparisonBaselineId && comparisonScenarioId && <p className="muted">Comparing results…</p>}
       {comparison.isError && (

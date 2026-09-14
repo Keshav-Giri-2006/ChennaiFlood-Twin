@@ -9,6 +9,7 @@ import { useViewerStore } from '../../state/viewerStore'
 import type { FloodLegend } from '../../types/api'
 import type { FloodFeatureProperties } from '../../types/gis'
 import { formatNumber, formatTimestampUtc } from '../../utils/format'
+import { EventCharts } from '../charts/EventCharts'
 import { useDigitalTwin } from '../viewer/controllerContext'
 
 export function FloodLegendView({ legend }: { legend: FloodLegend }) {
@@ -78,6 +79,7 @@ export function FloodPanel() {
             Peak from backend: {formatTimestampUtc(timeline.entries[timeline.peakIndex].time)} (highest system overflow rate). Flies the camera to the overflowing influence zones.
           </p>
           {peakMessage && <p className="error-text">{peakMessage}</p>}
+          <EventCharts simulationId={simulationId} timeline={timeline} index={index} />
           <dl className="kv">
             <dt>Selected time</dt>
             <dd>

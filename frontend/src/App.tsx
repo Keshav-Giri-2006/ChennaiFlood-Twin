@@ -11,6 +11,7 @@ import { SimulationControls } from './components/simulation/SimulationControls'
 import { TimelineBar } from './components/timeline/TimelineBar'
 import { DigitalTwinViewer } from './components/viewer/DigitalTwinViewer'
 import { LayerControls } from './components/viewer/LayerControls'
+import { MapLegend } from './components/viewer/MapLegend'
 import { ViewerToolbar } from './components/viewer/ViewerToolbar'
 
 export default function App() {
@@ -36,6 +37,7 @@ export default function App() {
         </div>
         <aside className="sidebar sidebar-right">
           <LayerControls />
+          <MapLegend />
           <ErrorBoundary label="Inspector">
             <AssetInspector />
           </ErrorBoundary>

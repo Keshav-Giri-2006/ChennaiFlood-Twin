@@ -76,3 +76,34 @@
 - 1.25× and 1.50×: rainfall totals exactly +25 % / +50 %; responses non-linear (e.g. peak overflow +33.4 % / +75.8 %); comparisons report new, persisting and increased potential bottlenecks (C169 persists HIGH; C156 new HIGH).
 - Event-level bottleneck, exposure and recommendation methods unchanged (versions unchanged); the timeline product is separately versioned.
 - No change to the SWMM model, rainfall, DEM, GIS source data or network; checksums verified.
+
+## 2026-09-14 — Prompt 5: presentation readiness, Docker validation, runbook
+
+**What changed**
+- **Presentation UI** (visualisation of existing backend values only):
+  - rainfall hyetograph + simulated system overflow-rate chart in the Flood tab (values of the backend timeline, peak marker, cursor follows the timeline, click/arrow keys select a timestamp);
+  - scenario overview chart in the Compare tab (1.00× / 1.25× / 1.50× from the backend comparisons: rainfall, peak overflow, flooding volume diagnostic, buildings at peak, HIGH potential bottlenecks);
+  - map legend for the visible layers (influence zones explicitly "not water depth or observed extent", per-run overflow classes, bottleneck concern, exposure, comparison);
+  - header chip for the displayed result (multiplier + precomputed / simulated now / stored);
+  - rainfall panel shows the scaled rainfall of a displayed what-if run next to the historical values (it previously showed only historical totals while a 1.25× result was displayed);
+  - rainfall metadata folded into "Rainfall data details";
+  - timeline caption no longer clipped;
+  - "Presenter questions" in Methodology & Limitations.
+- **Demo workflow:** Reset demo returns to the verified precomputed demonstration result when it has been loaded (previously it could switch to the newest 1.00× run).
+- **Docker:** stack built, started and validated end to end, including real SWMM runs in the container (`docs/DOCKER_DEPLOYMENT.md` §5). Fixes:
+  - `libgomp1` for the OpenMP-built SWMM engine, with an `ldd` build check;
+  - `libexpat1` for the rasterio wheel, with an import build check;
+  - `CORS_ALLOW_ORIGINS` comma-separated environment parsing (`NoDecode`; this previously crashed container start-up).
+- **Documentation:**
+  - new root `README.md` with *How to Run* (prerequisites, 2-terminal local development, 1-terminal Docker, demo mode, presentation launch, troubleshooting);
+  - Docker validation and Linux-vs-Windows SWMM comparison;
+  - performance re-check.
+- **Tests:** backend unit test for CORS environment parsing; frontend tests for the charts, legend, what-if rainfall display and demo reset.
+
+**Scientific decisions**
+- No change to the SWMM model, rainfall, DEM, GIS data, analysis methods or method versions.
+- Container SWMM (GCC/Linux build of the same 5.2.4 source) differs slightly from the Windows reference. At 1.00×:
+  - flooding loss 197.851 vs 197.876 ML;
+  - peak overflow 5.425 vs 5.435 m³/s;
+  - one extra LOW potential bottleneck, C159, from a single transient flow spike.
+- Differences are documented rather than tuned; the verified Windows result remains the demonstration reference.

@@ -2,6 +2,7 @@ import { useScenario, useSimulationStatus } from '../../hooks/queries'
 import { useResetDemo } from '../../hooks/useResetDemo'
 import { useSimulationStore } from '../../state/simulationStore'
 import { useViewerStore } from '../../state/viewerStore'
+import { resultSourceLabel } from '../../utils/resultLabels'
 import { StatusBadge } from '../common/StatusBadge'
 import { BackendStatus } from './BackendStatus'
 
@@ -11,7 +12,10 @@ export function Header() {
   const activeSimulationId = useSimulationStore((s) => s.activeSimulationId)
   const setMethodologyOpen = useViewerStore((s) => s.setMethodologyOpen)
   const scenario = useScenario(scenarioId)
-  const status = useSimulationStatus(runningSimulationId ?? activeSimulationId)
+  const sessionRunIds = useSimulationStore((s) => s.sessionRunIds)
+  const running = useSimulationStatus(runningSimulationId)
+  const displayed = useSimulationStatus(activeSimulationId)
+  const multiplier = (s: typeof displayed.data) => `${(s?.parameters?.rainfallMultiplier ?? 1).toFixed(2)}×`
   const resetDemo = useResetDemo()
 
   return (
@@ -23,7 +27,16 @@ export function Header() {
       <div className="header-status">
         <BackendStatus />
         {scenario.data && <span className="scenario-chip">{scenario.data.name}</span>}
-        {status.data && <StatusBadge status={status.data.status} />}
+        {displayed.data && (
+          <span className="scenario-chip displayed-chip" title="Result currently shown on the map, KPIs and panels">
+            Displayed: <strong>{multiplier(displayed.data)}</strong> {displayed.data.parameters?.rainfallMultiplier && displayed.data.parameters.rainfallMultiplier !== 1 ? 'what-if' : 'baseline'} · {resultSourceLabel(displayed.data, sessionRunIds)}
+          </span>
+        )}
+        {runningSimulationId && running.data && (
+          <span className="scenario-chip" title="Simulation in progress">
+            Run {multiplier(running.data)}: <StatusBadge status={running.data.status} />
+          </span>
+        )}
         <button type="button" onClick={resetDemo} title="Default camera, layers, timestep and baseline result; no data is deleted">
           Reset demo
         </button>

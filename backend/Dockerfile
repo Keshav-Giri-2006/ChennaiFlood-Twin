@@ -33,10 +33,17 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     SIMULATION_MAX_CONCURRENT=1
 
 COPY --from=swmm-build /opt/swmm /opt/swmm
+# System libraries: libgomp1 (the EPA SWMM engine is compiled with OpenMP) and libexpat1 (needed by the
+# GDAL bundled in the rasterio wheel). Fail the build if any shared library of the engine cannot be resolved.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends libgomp1 libexpat1 \
+ && rm -rf /var/lib/apt/lists/* \
+ && ! ldd /opt/swmm/bin/runswmm /opt/swmm/lib/libswmm5.so | grep -q "not found"
 
 WORKDIR /app/backend
 COPY backend/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt \
+ && python -c "import numpy, pyproj, rasterio, shapely, sqlalchemy, fastapi, uvicorn"
 
 # Application code and non-secret registries.
 COPY backend/app ./app

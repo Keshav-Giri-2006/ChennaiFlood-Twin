@@ -41,6 +41,8 @@ Copy-Item .env.example .env   # then set SWMM_EXECUTABLE
 `C:\Program Files\EPA SWMM 5.2.4 (64-bit)\runswmm.exe`. On Linux, set it to a
 `runswmm` built from EPA SWMM 5.2.4 sources, or put `runswmm` on `PATH`.
 Data paths default to the repository layout; override with `DATA_DIR` etc.
+`CORS_ALLOW_ORIGINS` accepts a comma-separated list or a JSON list.
+The complete runbook (local and Docker) is in the root `README.md`.
 
 ## Run
 

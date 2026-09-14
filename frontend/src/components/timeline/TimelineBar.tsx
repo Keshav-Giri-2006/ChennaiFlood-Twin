@@ -78,8 +78,8 @@ export function TimelineBar() {
         />
         <div className="timeline-scale muted small">
           <span>{formatTimestampUtc(first.time)}</span>
-          <span>
-            step {index + 1}/{timeline.entries.length} · {timeline.intervalMinutes}-min SWMM reporting steps · {formatNumber(spanHours, 1)} h simulated
+          <span title={`${timeline.intervalMinutes}-min SWMM reporting timestamps · ${formatNumber(spanHours, 1)} h simulated`}>
+            step {index + 1}/{timeline.entries.length} · {timeline.intervalMinutes}-min SWMM steps
           </span>
           <span>{formatTimestampUtc(final.time)}</span>
         </div>
