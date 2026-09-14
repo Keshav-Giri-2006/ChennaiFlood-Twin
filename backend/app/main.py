@@ -13,7 +13,7 @@ from collections.abc import AsyncIterator
 from fastapi import APIRouter, FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import flood, gis, health, scenarios, simulations
+from app.api.routes import decision, flood, gis, health, scenarios, simulations
 from app.core.config import APP_VERSION, Settings, get_settings
 from app.core.container import Container
 from app.core.errors import register_exception_handlers
@@ -67,7 +67,7 @@ def create_app(settings: Settings | None = None, container: Container | None = N
     register_exception_handlers(app)
 
     api = APIRouter(prefix=API_PREFIX)
-    for module in (health, scenarios, simulations, flood, gis):
+    for module in (health, scenarios, simulations, flood, decision, gis):
         api.include_router(module.router)
     app.include_router(api)
     return app

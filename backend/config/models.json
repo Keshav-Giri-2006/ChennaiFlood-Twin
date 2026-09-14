@@ -32,7 +32,67 @@
         "Subcatchments are first-pass GIS-derived model constructs, not official hydrological catchments.",
         "The model is not calibrated or field-validated; SWMM flooding loss is a model diagnostic, not observed flood volume.",
         "SWMM is a 1D drainage/hydraulic model; it does not produce a 2D/3D flood surface."
-      ]
+      ],
+      "diagnosticContext": {
+        "description": "Curated findings of the project's prior hydraulic investigations for links that appear in SWMM numerical diagnostics. Context only: they are not bottleneck evidence and do not change the model.",
+        "links": {
+          "C162": {
+            "sourceObjectId": 5902,
+            "nodes": [
+              "J122",
+              "J124"
+            ],
+            "finding": "Geometrically real 3.03 m segment. Its source inverts conflict with neighbouring GCC records at J122 and J124, so the model junction elevations are compromises (reconstructed with conduit offsets). A junction/invert-data problem, not evidence for deletion or a confirmed hydraulic failure.",
+            "decision": "RETAIN; do not fabricate an elevation correction",
+            "confidence": "Medium",
+            "source": "docs/ward176_deep_hydraulic_investigation.md; docs/ward176_hydraulic_reconstruction_report.md"
+          },
+          "C166": {
+            "sourceObjectId": 5906,
+            "nodes": [
+              "J135",
+              "J130"
+            ],
+            "finding": "Genuine 10.06 m segment in an incomplete network component (with C168, terminal J135) that has no verified outfall. Source geometry does not support a missing short connection. Its numerical instability is a property of the incomplete component, not evidence of a real-world flood hotspot.",
+            "decision": "RETAIN; flag incomplete component; do not invent a connection",
+            "confidence": "High",
+            "source": "docs/ward176_final_targeted_investigation.md"
+          },
+          "C175": {
+            "sourceObjectId": 5913,
+            "nodes": [
+              "J181",
+              "J180"
+            ],
+            "finding": "Short lateral/branch-like 6.11 m segment. Its source invert attributes are identical to C174 (36.1 m), which suggests a source-attribute artifact; geometry supports a real branch/crossing.",
+            "decision": "RETAIN; FLAG source-invert ambiguity pending manhole/drop evidence",
+            "confidence": "Medium",
+            "source": "docs/ward176_final_targeted_investigation.md"
+          },
+          "C180": {
+            "sourceObjectId": 5916,
+            "nodes": [
+              "J203",
+              "J204"
+            ],
+            "finding": "Genuine split piece of GCC ObjectID 5916 at its intersection with ObjectID 5918 (not a fabricated gap connection). The remaining issue is the J203/J204 junction elevation interpretation, not C180 geometry.",
+            "decision": "RETAIN; investigate junction elevation only",
+            "confidence": "High",
+            "source": "docs/ward176_final_targeted_investigation.md"
+          },
+          "C190": {
+            "sourceObjectId": 5923,
+            "nodes": [
+              "J061",
+              "J057"
+            ],
+            "finding": "Previously the only SWMM Warning 04 (minimum elevation drop applied); end inverts are now preserved through conduit offsets.",
+            "decision": "RETAIN; revisit with better invert/manhole data",
+            "confidence": "Medium",
+            "source": "docs/ward176_deep_hydraulic_investigation.md; docs/ward176_hydraulic_reconstruction_report.md"
+          }
+        }
+      }
     }
   ]
 }

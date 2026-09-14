@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -24,6 +24,7 @@ class ModelDefinition:
     routing: str
     flow_units: str
     limitations: list[str]
+    diagnostic_context: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -58,6 +59,7 @@ class Registry:
                 routing=m["routing"],
                 flow_units=m["flowUnits"],
                 limitations=list(m.get("limitations", [])),
+                diagnostic_context=dict(m.get("diagnosticContext", {})),
             )
             for m in models
         }

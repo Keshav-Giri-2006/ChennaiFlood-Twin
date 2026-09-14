@@ -14,6 +14,7 @@ from app.repositories.database import create_db_engine
 from app.repositories.registry import Registry
 from app.repositories.results import ResultStore, WorkspaceStore
 from app.repositories.simulations import SimulationRepository
+from app.services.decision_service import DecisionProductStore, DecisionService
 from app.services.gis_service import GisService
 from app.services.flood_service import FloodProductStore, FloodService
 from app.services.health_service import HealthService
@@ -61,6 +62,7 @@ class Container:
     results: ResultService
     gis: GisService
     flood: FloodService
+    decision: DecisionService
     timeseries: TimeseriesService
     health: HealthService
     executor: SimulationExecutor
@@ -86,17 +88,23 @@ class Container:
             mapping_loader=model_ctx.mapping,
         )
         flood_store = FloodProductStore(settings, registry, workspaces, result_store)
-        simulations = SimulationService(settings, registry, repository, workspaces, result_store, executor, runner_factory or default_runner_factory, flood_products=flood_store)
+        decision_store = DecisionProductStore(settings, registry, workspaces, result_store, flood_store, builder)
+        simulations = SimulationService(
+            settings, registry, repository, workspaces, result_store, executor, runner_factory or default_runner_factory,
+            flood_products=flood_store, decision_products=decision_store,
+        )
         flood = FloodService(simulations, flood_store)
+        decision = DecisionService(simulations, decision_store, flood)
         return cls(
             settings=settings,
             registry=registry,
             engine=engine,
             scenarios=ScenarioService(settings, registry),
             simulations=simulations,
-            results=ResultService(simulations, result_store, registry, model_ctx.mapping, flood),
+            results=ResultService(simulations, result_store, registry, model_ctx.mapping, flood, decision),
             gis=GisService(builder, settings.processed_dir / "gis" / "ward176_dem.tif"),
             flood=flood,
+            decision=decision,
             timeseries=TimeseriesService(simulations, workspaces, model_ctx.mapping),
             health=HealthService(settings, registry, engine, builder),
             executor=executor,

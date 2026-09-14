@@ -79,6 +79,15 @@ def test_real_swmm_simulations_run_isolated_and_reproduce_candidate_results(make
             assert all(c["passed"] for c in flood["validation"] if c["hard"])
             assert client.get(peak["asset"]["url"]).status_code == 200
 
+            # decision-support products derived from the real SWMM run
+            bottlenecks = client.get(f"{API}/simulations/{sid}/bottlenecks").json()
+            assert bottlenecks["bottlenecks"][0]["linkId"] == "C169" and bottlenecks["bottlenecks"][0]["severity"] == "HIGH"
+            assert "C162" not in {b["linkId"] for b in bottlenecks["bottlenecks"]}
+            exposure = client.get(f"{API}/simulations/{sid}/exposure").json()
+            assert exposure["peak"]["buildings"]["intersectingCount"] == 783
+            recs = client.get(f"{API}/simulations/{sid}/recommendations").json()
+            assert recs["recommendations"][0]["id"] == "rec-r1-C169"
+
         # Separate workspaces, identical deterministic results.
         assert settings.workdir / ids[0] != settings.workdir / ids[1]
         a, b = (container.results.results.read(sid, "results.json") for sid in ids)

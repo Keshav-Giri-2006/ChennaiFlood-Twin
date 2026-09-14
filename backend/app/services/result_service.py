@@ -35,8 +35,9 @@ def _unavailable(unit: str, description: str) -> dict[str, Any]:
 
 
 class ResultService:
-    def __init__(self, simulations: SimulationService, results: ResultStore, registry: Registry, mapping_loader: Any, flood: Any = None) -> None:
+    def __init__(self, simulations: SimulationService, results: ResultStore, registry: Registry, mapping_loader: Any, flood: Any = None, decision: Any = None) -> None:
         self.flood = flood
+        self.decision = decision
         self.simulations = simulations
         self.results = results
         self.registry = registry
@@ -96,6 +97,41 @@ class ResultService:
             for name in ("peakConcurrentFloodingNodes", "floodingDuration", "firstFloodingTime", "maximumNodeWaterDepth")
         }
 
+    def _bottleneck_summary(self, simulation_id: str) -> dict[str, Any]:
+        if self.decision is None:
+            return {"potentialBottlenecks": None, "potentialBottlenecksAvailable": False}
+        doc = self.decision.bottlenecks(simulation_id)
+        return {
+            "potentialBottlenecks": doc["summary"]["potentialBottlenecks"],
+            "potentialBottlenecksAvailable": True,
+            "potentialBottlenecksBySeverity": doc["summary"]["bySeverity"],
+            "bottleneckAnalysisVersion": doc["bottleneckAnalysisVersion"],
+        }
+
+    def _bottleneck_kpi(self, simulation_id: str) -> dict[str, Any]:
+        if self.decision is None:
+            return {"value": None, "unit": "count", "source": "model-derived", "description": "Potential drainage bottlenecks.", "available": False, "reason": "Bottleneck analysis is not configured.", "methodVersion": None}
+        doc = self.decision.bottlenecks(simulation_id)
+        return _q(
+            doc["summary"]["potentialBottlenecks"], "count", "model-derived",
+            "Conduits meeting at least one SWMM hydraulic-loading criterion (potential bottlenecks, not confirmed failures).",
+            methodVersion=doc["bottleneckAnalysisVersion"], bySeverity=doc["summary"]["bySeverity"],
+        )
+
+    def _exposure_kpis(self, simulation_id: str) -> dict[str, Any]:
+        if self.decision is None:
+            return {}
+        e = self.decision.exposure(simulation_id)
+        v = e["exposureAnalysisVersion"]
+        note = "Intersecting flood influence zones of overflowing model nodes (model-derived exposure; not flooded or damaged)."
+        return {
+            "exposure": {
+                "buildingsInInfluenceZonesEvent": _q(e["event"]["buildings"]["intersectingCount"], "count", "model-derived", f"Buildings {note} Any reporting timestamp.", methodVersion=v, total=e["totals"]["buildings"]["count"]),
+                "buildingsInInfluenceZonesPeak": _q(e["peak"]["buildings"]["intersectingCount"], "count", "model-derived", f"Buildings {note} At the peak flooding timestamp.", methodVersion=v, time=e["peak"]["time"], total=e["totals"]["buildings"]["count"]),
+                "roadAreaInInfluenceZonesEvent": _q(e["event"]["roads"]["areaWithinZonesM2"], "m2", "model-derived", f"Carriageway area {note} Any reporting timestamp.", methodVersion=v),
+            }
+        }
+
     def summary(self, simulation_id: str) -> dict[str, Any]:
         record, r = self._load(simulation_id)
         scenario = self.registry.scenarios[record.scenario_id]
@@ -108,8 +144,7 @@ class ResultService:
             "rainfall": {"totalMm": r["rainfallInput"]["totalMm"], "peakMmHr": r["rainfallInput"]["peakIntensityMmHr"], "dataType": "source"},
             "flood": self._flood_summary_block(record.simulation_id),
             "drainage": {
-                "potentialBottlenecks": None,
-                "potentialBottlenecksAvailable": False,
+                **self._bottleneck_summary(record.simulation_id),
                 "floodedNodes": len(r["nodes"]["flooding"]),
                 "surchargedNodes": len(r["nodes"]["surcharge"]),
                 "totalNodes": r["nodes"]["count"],
@@ -175,8 +210,9 @@ class ResultService:
                 "floodedNodes": _q(len(r["nodes"]["flooding"]), "count", "model-derived", "Nodes listed in the SWMM Node Flooding Summary.", total=r["nodes"]["count"], methodVersion=mv),
                 "surchargedNodes": _q(len(r["nodes"]["surcharge"]), "count", "model-derived", "Nodes listed in the SWMM Node Surcharge Summary.", total=r["nodes"]["count"], methodVersion=mv),
                 "surchargedConduits": _q(len(r["links"]["conduitSurcharge"]), "count", "model-derived", "Conduits listed in the SWMM Conduit Surcharge Summary.", total=r["links"]["count"], methodVersion=mv),
-                "potentialBottlenecks": {"value": None, "unit": "count", "source": "model-derived", "description": "Potential drainage bottlenecks.", "available": False, "reason": "Bottleneck analysis has not been implemented yet.", "methodVersion": None},
+                "potentialBottlenecks": self._bottleneck_kpi(record.simulation_id),
             },
+            **self._exposure_kpis(record.simulation_id),
             "modelDiagnostics": {
                 "runoffContinuityError": _q(runoff["continuityErrorPercent"], "%", "model-derived", "SWMM runoff quantity continuity error."),
                 "routingContinuityError": _q(routing["continuityErrorPercent"], "%", "model-derived", "SWMM flow routing continuity error."),
@@ -234,7 +270,8 @@ class ResultService:
                 "flood": done and self.flood is not None,
                 "timeline": done and self.flood is not None,
                 "risk": False,
-                "bottlenecks": False,
-                "recommendations": False,
+                "bottlenecks": done and self.decision is not None,
+                "exposure": done and self.decision is not None,
+                "recommendations": done and self.decision is not None,
             },
         }

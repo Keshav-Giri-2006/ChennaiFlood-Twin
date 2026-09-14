@@ -1985,3 +1985,49 @@ Response: `timestamps[]`, `intervalMinutes`, `variables{name:{unit,description}}
 - `/summary` `flood` block adds `nodeFloodingAvailable`, `floodProcessingVersion`, `peakTime`, `peakConcurrentFloodingNodes`, `floodingDurationHr`, `representation`. `maximumDepthM`/`affectedAreaM2` remain `null`.
 - `/kpis` `flood` group adds `peakConcurrentFloodingNodes`, `floodingDuration`, `firstFloodingTime` (unit `ISO 8601`) and `maximumNodeWaterDepth` (explicitly not ground depth), each with `methodVersion: flood-processing-v1`.
 - `/results` `products.flood` and `products.timeline` are `true` for completed simulations.
+
+---
+
+# 83. Implementation Addendum — Decision Support: Bottlenecks, Exposure, Recommendations (2026-09-14)
+
+Additive only; no existing endpoint, field or enum was renamed or removed. Method: `docs/DECISION_SUPPORT_METHOD.md`.
+All endpoints require a COMPLETED simulation (`409 SIMULATION_NOT_COMPLETED`); unknown/invalid IDs → `404 SIMULATION_NOT_FOUND`.
+
+## 83.1 Endpoints
+
+```text
+GET /simulations/{id}/bottlenecks[?severity=HIGH|MODERATE|LOW]   (§44) bottleneck-analysis-v1
+GET /simulations/{id}/bottlenecks/geojson                         (§46) conduit geometry of potential bottlenecks, ETag
+GET /simulations/{id}/bottlenecks/{linkId}                        NEW   one evidence record; 404 BOTTLENECK_NOT_FOUND (details.numericalDiagnostic when applicable)
+GET /simulations/{id}/exposure                                    (§41) exposure-analysis-v1 summary, 190-entry timeline, per-node exposure
+GET /simulations/{id}/exposure/buildings[?time=<ISO>]             NEW   exposed building ObjectIDs (event scope when time omitted)
+GET /simulations/{id}/exposure/roads[?time=<ISO>]                 NEW   exposed carriageway ObjectIDs
+GET /simulations/{id}/recommendations[?priority=HIGH|MEDIUM|LOW]  (§47) decision-support-v1
+GET /simulations/{id}/risk, /risk/geojson                         (§42–43) 404 RISK_PRODUCT_NOT_AVAILABLE (not derived, with alternatives)
+```
+
+`time` follows §82.1 rules: `422 INVALID_TIMESTAMP` / `404 TIMESTAMP_NOT_FOUND`.
+
+## 83.2 Bottleneck record (§44 fields kept: `linkId`, `sourceObjectId`, `severity`, `reason`, `evidence` → `criteria`)
+
+`rank, linkId, sourceObjectId, identifierNote, fromNodeId, toNodeId, severity (HIGH|MODERATE|LOW), uncappedSeverity, severityCappedByNetworkContext, score (0.25–1), criteriaMet, criteria[{id L1|L2|L3|S1, label, met, value, unit, threshold, source}], confidence (MEDIUM|LOW), confidenceReasons[], interpretation (CAPACITY_LIMITED|SUSTAINED_SURCHARGE|PEAK_FLOW_ABOVE_FULL_FLOW|LOADING_IN_COMPONENT_WITHOUT_OUTFALL), reason, conduit{}, hydraulics{maximumFlowCms, timeOfMaximumFlow, maximumVelocityMps, maxOverFullFlow, maxOverFullDepth, derivedFullFlowCapacityCms, hoursFullBothEnds, hoursFullUpstream, hoursFullDownstream, hoursAboveFullNormalFlow, hoursCapacityLimited}, numericalDiagnostics{}, connectedNodes[], networkContext{modelComponentId, componentHasOutfall, componentOutfalls}, sourceAttributes{}, projectInvestigation, explanation{whatIsThis, whyFlagged, interpretation, sourceData, plannerConsideration, disclaimer}`.
+
+List response adds `terminology, criteriaDefinition, legend, summary{conduitsScreened, potentialBottlenecks, bySeverity, inComponentsWithoutOutfall, modelComponents, modelComponentsWithOutfall}, numericalDiagnostics[], limitations[]`. GeoJSON feature properties: `featureType: potentialBottleneck, linkId, sourceObjectId, fromNodeId, toNodeId, severity, score, confidence, rank, componentHasOutfall, floodingNodeIds`.
+
+## 83.3 Exposure
+
+`/exposure`: `terminology, definition, totals{buildings{count, footprintAreaM2}, roads{count, areaM2}}, event, peak{index, time, …}, maxConcurrent, timeline[{index, time, floodingNodeCount, buildingsIntersecting, buildingFootprintAreaM2, roadsIntersecting, roadAreaM2}], byNode[], limitations`.
+Scope blocks: `buildings{intersectingCount, percentOfBuildings, footprintAreaWithinZonesM2, percentOfFootprintArea, intersectingZonesOfNodesWithoutOutfallCount}`, `roads{intersectingCount, percentOfRoadFeatures, areaWithinZonesM2, percentOfRoadArea}`.
+The §41 example fields `affectedCount`/`affectedAreaM2` are intentionally not used: "affected" would imply impact; exposure is spatial intersection with model-derived influence zones.
+Asset responses: `assetType, scope (event|timestamp), time, index, floodingNodeIds, count, objectIds[], assets[{objectId, areaWithinZonesM2, nodeIds}]`.
+
+## 83.4 Recommendations (§47 fields kept: `id, priority, category, title, description → recommendation, drivers`)
+
+`id, rule (R1–R6), category (DRAINAGE_CAPACITY|NETWORK_DATA_VERIFICATION|DRAINAGE_INSPECTION|PREPAREDNESS_AND_ACCESS|MAINTENANCE|MODEL_DATA_VERIFICATION), priority, confidence, title, recommendation, why, evidence{links[{linkId, sourceObjectId}], nodes[], metrics[{label, value, unit, source}]}, drivers[], confidenceReasons[], relatedBottleneckLinkIds[], focus{linkIds, nodeIds}, disclaimer`. List adds `rules{}, summary{total, byPriority, byRule}, disclaimer` and all three method versions.
+
+## 83.5 Summary / KPI / products changes
+
+- `/summary` `drainage.potentialBottlenecks` is now the count with `potentialBottlenecksAvailable: true`, `potentialBottlenecksBySeverity`, `bottleneckAnalysisVersion`.
+- `/kpis` `drainage.potentialBottlenecks` is a Quantity (`methodVersion`, `bySeverity`); new group `exposure`: `buildingsInInfluenceZonesEvent`, `buildingsInInfluenceZonesPeak`, `roadAreaInInfluenceZonesEvent`. `flood.affectedBuildings` stays unavailable (no flood extent).
+- `/results` `products.bottlenecks`, `products.exposure`, `products.recommendations` are `true` for completed simulations; `products.risk` stays `false`.
+- Simulation `artifacts` record `bottleneckAnalysisVersion`, `exposureAnalysisVersion`, `decisionSupportVersion`.

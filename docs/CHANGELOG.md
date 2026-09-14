@@ -41,3 +41,22 @@
 **Tests / result**
 - Backend: 89 unit/API tests passed; real-SWMM integration test passed, including flood products.
 - Frontend: `tsc -b`, oxlint and `vite build` clean; 23 Vitest tests passed; app run in the browser with real data (layers aligned, selection, toggles, timestamp stepping).
+
+## 2026-09-14 — Prompt 3: interactive timeline, potential bottlenecks, exposure, recommendations
+
+**What changed**
+- **Repository:** initialised Git; checkpoint commit `3c1ca01` of Prompt 1 + 2 (runtime outputs, venv, node_modules, `.env`, logs and >50 MB Copernicus tiles ignored; controlled data stored byte-exact via `.gitattributes`).
+- **Backend:**
+  - `bottleneck-analysis-v1` (`app/analysis/bottleneck_analysis.py`): SWMM-report screening (capacity limited, sustained full-bore surcharge, peak flow > full-flow capacity, connected node flooding), component-without-outfall cap, confidence caveats, numerical diagnostics kept separate.
+  - `exposure-analysis-v1` (`app/analysis/exposure_analysis.py`): building/carriageway intersection with influence zones of overflowing nodes, per timestamp / peak / event.
+  - `decision-support-v1` (`app/analysis/recommendations.py`): six evidence-triggered rules R1–R6.
+  - `DecisionProductStore`/`DecisionService`, generated in PROCESSING after flood products, cached by versions + output checksum; new routes (API contract §83); risk endpoints return `404 RISK_PRODUCT_NOT_AVAILABLE`.
+  - `models.json` `diagnosticContext` curated from the existing hydraulic investigation documents (no model change).
+- **Frontend:** timeline controller (play/pause, first/prev/next/peak, slider, 0.5–4× speed, preloading, no interpolation); live KPI panel; Flood / Hydraulics / Exposure / Actions tabs; potential-bottleneck layer with View Hotspots and selection; exposure highlighting by diffing existing building/road entities; recommendation cards with evidence and "Show on map"; explainability inspector; Methodology & Limitations dialog; OSM imagery capped at zoom 19.
+- **Documentation:** `docs/DECISION_SUPPORT_METHOD.md`; API contract §83; READMEs.
+
+**Scientific decisions**
+- C162, C175, C180, C086 (time-step critical) and C166 (instability, component without outfall) meet no loading criterion and are not potential bottlenecks; they appear as numerical diagnostics / data-verification recommendations.
+- Only 4 of 48 model components contain an outfall; 57 % of simulated overflow volume occurs in components without one. Loading there is capped at LOW and converted to connectivity-verification recommendations.
+- A hazard × exposure risk indicator was not implemented (no ground depth/extent; zones are associations).
+- No change to the SWMM model, rainfall, DEM, GIS source data or network.

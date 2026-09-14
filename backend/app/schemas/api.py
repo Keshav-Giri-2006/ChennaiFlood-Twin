@@ -217,6 +217,85 @@ class TimeseriesResponse(OpenModel):
     series: dict[str, list[float]]
 
 
+class BottleneckRecord(OpenModel):
+    linkId: str
+    sourceObjectId: int
+    fromNodeId: str
+    toNodeId: str
+    severity: Literal["HIGH", "MODERATE", "LOW"]
+    score: float
+    confidence: Literal["MEDIUM", "LOW"]
+    criteria: list[dict[str, Any]]
+    hydraulics: dict[str, Any]
+    connectedNodes: list[dict[str, Any]]
+    networkContext: dict[str, Any]
+    explanation: dict[str, Any]
+
+
+class BottleneckListResponse(OpenModel):
+    simulationId: str
+    bottleneckAnalysisVersion: str
+    dataType: str
+    summary: dict[str, Any]
+    bottlenecks: list[BottleneckRecord]
+    numericalDiagnostics: list[dict[str, Any]]
+    limitations: list[str]
+
+
+class BottleneckDetailResponse(BottleneckRecord):
+    relatedRecommendationIds: list[str]
+    metadata: dict[str, Any]
+
+
+class ExposureResponse(OpenModel):
+    simulationId: str
+    exposureAnalysisVersion: str
+    floodProcessingVersion: str
+    dataType: str
+    terminology: str
+    totals: dict[str, Any]
+    event: dict[str, Any]
+    peak: dict[str, Any]
+    timeline: list[dict[str, Any]]
+    byNode: list[dict[str, Any]]
+    limitations: list[str]
+
+
+class ExposureAssetsResponse(OpenModel):
+    simulationId: str
+    assetType: Literal["buildings", "roads"]
+    scope: Literal["event", "timestamp"]
+    time: str | None
+    count: int
+    objectIds: list[int]
+    assets: list[dict[str, Any]]
+    metadata: dict[str, Any]
+
+
+class RecommendationRecord(OpenModel):
+    id: str
+    rule: str
+    category: str
+    priority: Literal["HIGH", "MEDIUM", "LOW"]
+    confidence: Literal["MEDIUM", "LOW"]
+    title: str
+    recommendation: str
+    why: str
+    evidence: dict[str, Any]
+    drivers: list[str]
+    disclaimer: str
+
+
+class RecommendationListResponse(OpenModel):
+    simulationId: str
+    decisionSupportVersion: str
+    dataType: str
+    disclaimer: str
+    rules: dict[str, str]
+    summary: dict[str, Any]
+    recommendations: list[RecommendationRecord]
+
+
 class GisLayerInfo(ApiModel):
     layer: str
     title: str

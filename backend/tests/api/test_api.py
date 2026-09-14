@@ -108,7 +108,7 @@ def test_simulation_lifecycle_with_replayed_artifacts(build_client):
     assert kpis["rainfall"]["total"] == {"value": 282.835, "unit": "mm", "source": "source", "description": kpis["rainfall"]["total"]["description"], "methodVersion": None}
     assert kpis["hydraulics"]["simulatedFloodingVolume"]["unit"] == "L"
     assert kpis["hydraulics"]["simulatedFloodingVolume"]["source"] == "model-derived"
-    assert kpis["drainage"]["potentialBottlenecks"]["value"] is None
+    assert kpis["drainage"]["potentialBottlenecks"]["value"] == 12 and kpis["drainage"]["potentialBottlenecks"]["methodVersion"] == "bottleneck-analysis-v1"
 
     diagnostics = client.get(f"{API}/simulations/{sid}/diagnostics").json()
     critical = {e["id"]: e["sourceObjectId"] for e in diagnostics["timeStepCriticalElements"]}
@@ -116,6 +116,7 @@ def test_simulation_lifecycle_with_replayed_artifacts(build_client):
 
     products = client.get(f"{API}/simulations/{sid}/results").json()["products"]
     assert products["summary"] and products["kpis"] and products["flood"] and products["timeline"] and not products["risk"]
+    assert products["bottlenecks"] and products["exposure"] and products["recommendations"]
 
     listing = client.get(f"{API}/simulations", params={"scenarioId": "michaung-2023", "status": "COMPLETED"}).json()
     assert [s["simulationId"] for s in listing["simulations"]] == [sid]

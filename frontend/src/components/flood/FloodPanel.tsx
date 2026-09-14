@@ -1,114 +1,113 @@
+import { useQueryClient } from '@tanstack/react-query'
+import { useState } from 'react'
 import { friendlyErrorMessage } from '../../api/client'
 import { FLOOD_CLASS_COLORS, SURCHARGED_COLOR } from '../../cesium/styles'
-import { useFloodSummary, useFloodTimeline, useFloodTimeslice } from '../../hooks/queries'
-import { clampIndex, useFloodStore } from '../../state/floodStore'
-import { useSimulationStore } from '../../state/simulationStore'
+import { floodSliceQuery, useFloodSummary } from '../../hooks/queries'
+import { floodStateLabel, useActiveTimeline } from '../../hooks/useTimeline'
+import { useFloodStore } from '../../state/floodStore'
 import { useViewerStore } from '../../state/viewerStore'
 import type { FloodLegend } from '../../types/api'
+import type { FloodFeatureProperties } from '../../types/gis'
 import { formatNumber, formatTimestampUtc } from '../../utils/format'
-import { Panel } from '../common/Panel'
+import { useDigitalTwin } from '../viewer/controllerContext'
 
 export function FloodLegendView({ legend }: { legend: FloodLegend }) {
   return (
     <div className="legend" aria-label="Flood legend">
-      <p className="legend-title">Simulated node overflow rate (m³/s)</p>
+      <p className="legend-title">Simulated node overflow rate (m³/s) — display classes</p>
       <ul>
+        <li>
+          <span className="swatch swatch-empty" aria-hidden />
+          No simulated flooding (no shading)
+        </li>
         {legend.overflowClasses.map((c) => (
           <li key={c.class}>
             <span className="swatch" style={{ background: FLOOD_CLASS_COLORS[c.class] }} aria-hidden />
-            <strong>{c.class}</strong> {formatNumber(c.minExclusiveCms, 3)} – {formatNumber(c.maxInclusiveCms, 3)}
+            <strong>{c.class[0] + c.class.slice(1).toLowerCase()}</strong> {formatNumber(c.minExclusiveCms, 3)} – {formatNumber(c.maxInclusiveCms, 3)}
           </li>
         ))}
         <li>
           <span className="swatch" style={{ background: SURCHARGED_COLOR }} aria-hidden />
-          <strong>SURCHARGED</strong> node (no overflow)
+          Surcharged node (no overflow)
         </li>
       </ul>
       <p className="muted small">{legend.classBasis}</p>
-      <p className="muted small">Shaded areas are nearest-node influence zones of overflowing nodes — not flood extent, no depth.</p>
+      <p className="muted small">Shaded areas are nearest-node influence zones of overflowing nodes — not flood extent, no depth, not hazard zoning.</p>
     </div>
   )
 }
 
 export function FloodPanel() {
-  const activeSimulationId = useSimulationStore((s) => s.activeSimulationId)
-  const summary = useFloodSummary(activeSimulationId)
-  const timeline = useFloodTimeline(activeSimulationId)
-  const { simulationId, selectedIndex, selectTimestamp } = useFloodStore()
+  const client = useQueryClient()
+  const controller = useDigitalTwin()
+  const { simulationId, timeline, index, entry, isPeak } = useActiveTimeline()
+  const summary = useFloodSummary(simulationId)
   const opacity = useViewerStore((s) => s.floodOpacity)
   const setOpacity = useViewerStore((s) => s.setFloodOpacity)
+  const [peakMessage, setPeakMessage] = useState<string | null>(null)
 
-  const entries = timeline.data?.entries ?? []
-  const index = simulationId === activeSimulationId ? selectedIndex : null
-  const entry = index !== null ? entries[index] ?? null : null
-  const slice = useFloodTimeslice(activeSimulationId, entry)
+  if (!simulationId) return <p className="muted">Flood results appear after a simulation has completed.</p>
 
-  const step = (delta: number) => {
-    if (!activeSimulationId || index === null) return
-    const next = clampIndex(index + delta, entries.length)
-    if (next !== null) selectTimestamp(activeSimulationId, next)
-  }
-
-  if (!activeSimulationId) {
-    return (
-      <Panel title="Simulated flood">
-        <p className="muted">Flood results appear after a simulation has completed.</p>
-      </Panel>
-    )
+  /** Explicit user action: select the backend peak timestamp and fly to its overflowing influence zones. */
+  const goToPeak = async () => {
+    if (!timeline) return
+    const { pause, selectTimestamp } = useFloodStore.getState()
+    pause()
+    selectTimestamp(simulationId, timeline.peakIndex)
+    setPeakMessage(null)
+    try {
+      const fc = await client.fetchQuery(floodSliceQuery(simulationId, timeline.entries[timeline.peakIndex]))
+      const zones = fc.features.filter((f) => (f.properties as unknown as FloodFeatureProperties).featureType === 'influenceZone')
+      const points = zones.flatMap((f) => (f.geometry.type === 'Polygon' ? f.geometry.coordinates.flat() : f.geometry.type === 'MultiPolygon' ? f.geometry.coordinates.flat(2) : [])).map((p) => [p[0], p[1]] as [number, number])
+      if (!controller?.flyToLonLats(points)) setPeakMessage('No overflowing zones at the peak timestamp to frame.')
+    } catch (error) {
+      setPeakMessage(friendlyErrorMessage(error))
+    }
   }
 
   return (
-    <Panel title="Simulated flood (model-derived)">
-      {(summary.isPending || timeline.isPending) && <p className="muted">Loading flood results…</p>}
-      {(summary.isError || timeline.isError) && <p className="error-text">Flood visualisation unavailable: {friendlyErrorMessage(summary.error ?? timeline.error)}</p>}
-      {timeline.data && entry && (
+    <div className="tab-body">
+      {(summary.isPending || !timeline) && !summary.isError && <p className="muted">Loading flood results…</p>}
+      {summary.isError && <p className="error-text">Flood visualisation unavailable: {friendlyErrorMessage(summary.error)}</p>}
+      {timeline && entry && index !== null && (
         <>
-          <div className="time-selector">
-            <button type="button" onClick={() => step(-1)} disabled={index === 0} aria-label="Previous timestamp">
-              ◀
-            </button>
-            <input
-              type="range"
-              min={0}
-              max={entries.length - 1}
-              value={index ?? 0}
-              onChange={(e) => selectTimestamp(activeSimulationId, Number(e.target.value))}
-              aria-label="Simulation timestamp"
-            />
-            <button type="button" onClick={() => step(1)} disabled={index === entries.length - 1} aria-label="Next timestamp">
-              ▶
-            </button>
-          </div>
-          <p className="timestamp">
-            {formatTimestampUtc(entry.time)}
-            {index === timeline.data.peakIndex && <span className="badge badge-active">peak</span>}
-            <span className="muted small"> · step {(index ?? 0) + 1}/{entries.length}</span>
-          </p>
-          <button type="button" className="link" onClick={() => selectTimestamp(activeSimulationId, timeline.data.peakIndex)}>
-            Jump to peak system flooding
+          <button type="button" className="primary" onClick={goToPeak}>
+            Go to Peak Flood
           </button>
+          <p className="muted small">
+            Peak from backend: {formatTimestampUtc(timeline.entries[timeline.peakIndex].time)} (highest system overflow rate). Flies the camera to the overflowing influence zones.
+          </p>
+          {peakMessage && <p className="error-text">{peakMessage}</p>}
           <dl className="kv">
-            <dt>Overflowing nodes</dt>
-            <dd>{entry.floodingNodeCount}</dd>
-            <dt>Surcharged nodes</dt>
-            <dd>{entry.surchargedNodeCount}</dd>
-            <dt>System overflow rate</dt>
-            <dd>{formatNumber(entry.systemFloodingRateCms, 3)} m³/s</dd>
+            <dt>Selected time</dt>
+            <dd>
+              {formatTimestampUtc(entry.time)} {isPeak && <span className="badge badge-active">peak</span>}
+            </dd>
+            <dt>State</dt>
+            <dd>{floodStateLabel(entry, isPeak)}</dd>
+            <dt>Flooding / surcharged nodes</dt>
+            <dd>
+              {entry.floodingNodeCount} / {entry.surchargedNodeCount}
+            </dd>
+            <dt>Max node overflow rate</dt>
+            <dd>{formatNumber(entry.maxNodeFloodingRateCms, 3)} m³/s</dd>
             <dt>Rainfall at this time</dt>
             <dd>{formatNumber(entry.rainfallMmHr, 2)} mm/hr</dd>
+            <dt>Approx. cumulative overflow</dt>
+            <dd>
+              {formatNumber(entry.approxCumulativeSystemOverflowM3, 0)} m³ <span className="muted small">(model diagnostic)</span>
+            </dd>
           </dl>
-          {slice.isFetching && <p className="muted small">Loading time slice…</p>}
-          {slice.isError && <p className="error-text">{friendlyErrorMessage(slice.error)}</p>}
           <label className="field compact">
-            <span>Flood opacity {Math.round(opacity * 100)}%</span>
+            <span>Flood layer opacity {Math.round(opacity * 100)}%</span>
             <input type="range" min={0.1} max={1} step={0.05} value={opacity} onChange={(e) => setOpacity(Number(e.target.value))} />
           </label>
-          <FloodLegendView legend={timeline.data.legend} />
+          <FloodLegendView legend={timeline.legend} />
           <p className="muted small">
-            Method {timeline.data.metadata.floodProcessingVersion}. Ground flood depth and extent are not derived: SWMM ran without surface ponding and model/DEM elevations are not vertically consistent.
+            Method {timeline.metadata.floodProcessingVersion}. Ground flood depth and extent are not derived: SWMM ran without surface ponding and model/DEM elevations are not vertically consistent.
           </p>
         </>
       )}
-    </Panel>
+    </div>
   )
 }

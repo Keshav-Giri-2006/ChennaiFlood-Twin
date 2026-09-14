@@ -14,7 +14,7 @@ API (app/api) → services (app/services) → SWMM / GIS / analysis → reposito
 |---|---|
 | `app/main.py` | App factory, CORS, request IDs, lifespan (startup recovery) |
 | `app/core/` | Settings (env-based), logging, structured errors, dependency container |
-| `app/api/routes/` | `health`, `scenarios`, `simulations`, `gis` |
+| `app/api/routes/` | `health`, `scenarios`, `simulations`, `flood`, `decision`, `gis` |
 | `app/schemas/` | Pydantic request/response models (contract field names) |
 | `app/models/simulation.py` | Status/stage enums and the allowed state transitions |
 | `app/simulation/` | `.inp` reader, rainfall reader, validator, SWMM runner, `.rpt` parser, binary `.out` reader |
@@ -104,9 +104,18 @@ see `docs/FLOOD_PROCESSING_METHOD.md`.
 Endpoints: `/simulations/{id}/flood`, `/flood/timeline`, `/flood/timeslice?time=`, `/flood/timeslices/{key}`,
 `/flood/zones`, `/timeseries/{system|nodes/{nodeId}|links/{linkId}}`, `/gis/terrain` (API contract §82).
 
+## Decision-support products (bottleneck-analysis-v1, exposure-analysis-v1, decision-support-v1)
+
+Generated during PROCESSING right after the flood products (lazily for older runs) into `runtime/results/<id>/decision/`,
+cached by all method versions and the SWMM output checksum. Bump the corresponding `*_VERSION` setting whenever a
+criterion, threshold or rule changes, otherwise cached products are reused. See `docs/DECISION_SUPPORT_METHOD.md`.
+
+Endpoints: `/simulations/{id}/bottlenecks[/geojson|/{linkId}]`, `/exposure`, `/exposure/{buildings|roads}?time=`,
+`/recommendations`; `/risk` returns `404 RISK_PRODUCT_NOT_AVAILABLE` (API contract §83).
+
 ## Known limitations (this phase)
 
-* No flood depth/extent, affected assets, risk, bottlenecks or recommendations yet — the API returns `null` with `available: false` (or `404 FLOOD_PRODUCT_NOT_AVAILABLE`).
+* No flood depth/extent or risk score — the API returns `null` with `available: false` (or `404 FLOOD_PRODUCT_NOT_AVAILABLE` / `RISK_PRODUCT_NOT_AVAILABLE`). Bottlenecks, exposure and recommendations are model-derived decision support from one uncalibrated run.
 * `parameters` (e.g. rainfall multiplier) are rejected with `UNSUPPORTED_PARAMETER`.
 * Cancellation is not implemented.
 * On memory-constrained hosts, numpy/OpenBLAS is limited to one thread (`app/__init__.py`).

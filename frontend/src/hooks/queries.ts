@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { floodApi, scenariosApi, simulationsApi } from '../api/endpoints'
-import type { FloodTimelineEntry, SimulationStatusValue } from '../types/api'
+import { decisionApi, floodApi, gisApi, scenariosApi, simulationsApi } from '../api/endpoints'
+import type { ExposureAssetType, FloodTimelineEntry, SimulationStatusValue } from '../types/api'
 
 const TERMINAL: SimulationStatusValue[] = ['COMPLETED', 'FAILED']
 export const STATUS_POLL_MS = 1500
@@ -14,7 +14,18 @@ export const queryKeys = {
   floodSummary: (id: string) => ['flood', id, 'summary'] as const,
   floodTimeline: (id: string) => ['flood', id, 'timeline'] as const,
   floodSlice: (id: string, key: string) => ['flood', id, 'timeslice', key] as const,
+  summary: (id: string) => ['summary', id] as const,
+  bottlenecks: (id: string) => ['decision', id, 'bottlenecks'] as const,
+  bottleneck: (id: string, linkId: string) => ['decision', id, 'bottleneck', linkId] as const,
+  bottleneckGeojson: (id: string) => ['decision', id, 'bottlenecks-geojson'] as const,
+  exposure: (id: string) => ['decision', id, 'exposure'] as const,
+  exposureAssets: (id: string, type: ExposureAssetType, time: string | null) => ['decision', id, 'exposure-assets', type, time ?? 'event'] as const,
+  recommendations: (id: string) => ['decision', id, 'recommendations'] as const,
+  modelLayer: (kind: 'conduits' | 'nodes') => ['gis', 'model', kind] as const,
 }
+
+/** Completed-simulation products are immutable: cache them for the session. */
+const IMMUTABLE = { staleTime: Infinity } as const
 
 export function useScenarios() {
   return useQuery({ queryKey: queryKeys.scenarios, queryFn: ({ signal }) => scenariosApi.list(signal), staleTime: Infinity })
@@ -84,4 +95,66 @@ export function useFloodTimeslice(simulationId: string | null, entry: FloodTimel
     staleTime: Infinity,
     gcTime: 5 * 60_000,
   })
+}
+
+/** Query options for a time slice; shared by the flood layer and playback preloading (same cache entry). */
+export function floodSliceQuery(simulationId: string, entry: FloodTimelineEntry) {
+  return {
+    queryKey: queryKeys.floodSlice(simulationId, entry.key),
+    queryFn: ({ signal }: { signal?: AbortSignal }) => floodApi.timesliceAsset(entry.asset.url, signal),
+    staleTime: Infinity,
+    gcTime: 5 * 60_000,
+  }
+}
+
+export function useSimulationSummary(simulationId: string | null) {
+  return useQuery({ queryKey: queryKeys.summary(simulationId ?? ''), queryFn: ({ signal }) => simulationsApi.summary(simulationId as string, signal), enabled: Boolean(simulationId), ...IMMUTABLE })
+}
+
+export function useBottlenecks(simulationId: string | null) {
+  return useQuery({ queryKey: queryKeys.bottlenecks(simulationId ?? ''), queryFn: ({ signal }) => decisionApi.bottlenecks(simulationId as string, signal), enabled: Boolean(simulationId), ...IMMUTABLE })
+}
+
+export function useBottleneck(simulationId: string | null, linkId: string | null) {
+  return useQuery({
+    queryKey: queryKeys.bottleneck(simulationId ?? '', linkId ?? ''),
+    queryFn: ({ signal }) => decisionApi.bottleneck(simulationId as string, linkId as string, signal),
+    enabled: Boolean(simulationId && linkId),
+    retry: false,
+    ...IMMUTABLE,
+  })
+}
+
+export function useBottleneckGeojson(simulationId: string | null, enabled = true) {
+  return useQuery({
+    queryKey: queryKeys.bottleneckGeojson(simulationId ?? ''),
+    queryFn: ({ signal }) => decisionApi.bottlenecksGeojson(simulationId as string, signal),
+    enabled: Boolean(simulationId) && enabled,
+    ...IMMUTABLE,
+  })
+}
+
+export function useExposure(simulationId: string | null) {
+  return useQuery({ queryKey: queryKeys.exposure(simulationId ?? ''), queryFn: ({ signal }) => decisionApi.exposure(simulationId as string, signal), enabled: Boolean(simulationId), ...IMMUTABLE })
+}
+
+/** Exposed asset ObjectIDs for one reporting timestamp (or the whole event when time is null). */
+export function useExposureAssets(simulationId: string | null, assetType: ExposureAssetType, time: string | null, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.exposureAssets(simulationId ?? '', assetType, time),
+    queryFn: ({ signal }) => decisionApi.exposureAssets(simulationId as string, assetType, time, signal),
+    enabled: Boolean(simulationId) && enabled,
+    // Keep the previous highlight of the same simulation while the next timestamp loads (no flicker).
+    placeholderData: (previous) => (previous?.simulationId === simulationId ? previous : undefined),
+    ...IMMUTABLE,
+    gcTime: 5 * 60_000,
+  })
+}
+
+export function useRecommendations(simulationId: string | null) {
+  return useQuery({ queryKey: queryKeys.recommendations(simulationId ?? ''), queryFn: ({ signal }) => decisionApi.recommendations(simulationId as string, signal), enabled: Boolean(simulationId), ...IMMUTABLE })
+}
+
+export function useModelLayer(kind: 'conduits' | 'nodes', enabled = true) {
+  return useQuery({ queryKey: queryKeys.modelLayer(kind), queryFn: ({ signal }) => gisApi.model(kind, signal), enabled, ...IMMUTABLE })
 }

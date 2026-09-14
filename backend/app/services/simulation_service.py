@@ -31,6 +31,7 @@ from app.models.simulation import (
 from app.repositories.registry import ModelDefinition, Registry, ScenarioDefinition
 from app.repositories.results import ResultStore, WorkspaceStore, validate_simulation_id
 from app.repositories.simulations import SimulationRepository
+from app.services.decision_service import DecisionProcessingError
 from app.simulation.output_reader import OutputFormatError, read_output
 from app.simulation.report_parser import ReportParseError, parse_report
 from app.simulation.runner import SwmmExecutionError, SwmmRunner, SwmmUnavailableError, resolve_swmm_executable
@@ -83,6 +84,7 @@ class SimulationService:
         executor: SimulationExecutor,
         runner_factory: RunnerFactory = default_runner_factory,
         flood_products: Any = None,
+        decision_products: Any = None,
     ) -> None:
         self.settings = settings
         self.registry = registry
@@ -92,6 +94,7 @@ class SimulationService:
         self.executor = executor
         self.runner_factory = runner_factory
         self.flood_products = flood_products
+        self.decision_products = decision_products
 
     # -- queries --------------------------------------------------------------
     def get(self, simulation_id: str) -> SimulationRecord:
@@ -261,6 +264,13 @@ class SimulationService:
                     raise _StageFailure(ErrorCode.PROCESSING_FAILED, "Flood post-processing failed.", {"reason": str(exc), "details": exc.details}) from exc
                 artifacts["flood/manifest.json"] = f"{simulation_id}/flood/manifest.json"
                 artifacts["floodProcessingVersion"] = flood_manifest["floodProcessingVersion"]
+            if self.decision_products is not None:
+                try:
+                    decision_manifest = self.decision_products.ensure(simulation_id, record.scenario_id, record.model_version)
+                except DecisionProcessingError as exc:
+                    raise _StageFailure(ErrorCode.PROCESSING_FAILED, "Decision-support post-processing failed.", {"reason": str(exc), "details": exc.details}) from exc
+                artifacts["decision/manifest.json"] = f"{simulation_id}/decision/manifest.json"
+                artifacts.update(decision_manifest["versions"])
             self.repository.update_fields(simulation_id, artifacts=artifacts, engine_version=report.engine_version)
             record = self._advance(simulation_id, SimulationStatus.COMPLETED, completed_at=utcnow())
             self._write_metadata(simulation_id, record, scenario, model, validated.checks, None)

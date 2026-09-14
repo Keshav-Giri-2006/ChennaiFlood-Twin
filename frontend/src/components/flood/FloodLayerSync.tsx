@@ -1,16 +1,23 @@
 import { useEffect } from 'react'
 import { useFloodTimeline, useFloodTimeslice } from '../../hooks/queries'
+import { useActiveTimeline, usePlayback } from '../../hooks/useTimeline'
 import { clampIndex, useFloodStore } from '../../state/floodStore'
 import { useSimulationStore } from '../../state/simulationStore'
 import type { FeatureCollection, FloodFeatureProperties } from '../../types/gis'
 import { useDigitalTwin } from '../viewer/controllerContext'
 
-/** Pushes the backend flood time slice for the active simulation + selected timestamp into Cesium. */
+/**
+ * Pushes the backend flood time slice for the active simulation + selected timestamp into Cesium
+ * and drives timeline playback. Only the flood layer is updated; static layers are never reloaded.
+ */
 export function FloodLayerSync() {
   const controller = useDigitalTwin()
   const activeSimulationId = useSimulationStore((s) => s.activeSimulationId)
   const timeline = useFloodTimeline(activeSimulationId)
-  const { simulationId: floodSimulationId, selectedIndex, reset } = useFloodStore()
+  const floodSimulationId = useFloodStore((s) => s.simulationId)
+  const reset = useFloodStore((s) => s.reset)
+  const { entry } = useActiveTimeline()
+  usePlayback()
 
   // Default to the backend-reported peak timestamp when a new simulation becomes active.
   useEffect(() => {
@@ -18,23 +25,22 @@ export function FloodLayerSync() {
       reset(null, null)
       return
     }
-    if (timeline.data && floodSimulationId !== activeSimulationId) {
+    if (timeline.data && timeline.data.simulationId === activeSimulationId && floodSimulationId !== activeSimulationId) {
       reset(activeSimulationId, clampIndex(timeline.data.peakIndex, timeline.data.entries.length))
     }
   }, [activeSimulationId, timeline.data, floodSimulationId, reset])
 
-  const entry =
-    timeline.data && floodSimulationId === activeSimulationId && selectedIndex !== null ? timeline.data.entries[selectedIndex] ?? null : null
   const slice = useFloodTimeslice(activeSimulationId, entry)
 
   useEffect(() => {
     if (!controller) return
     const fc = slice.data as FeatureCollection<FloodFeatureProperties> | undefined
-    // Only draw a slice that belongs to the currently active simulation (race protection).
-    if (!activeSimulationId || !fc || fc.metadata?.simulationId !== activeSimulationId) {
-      if (!activeSimulationId) controller.setFloodSlice(null)
+    if (!activeSimulationId) {
+      controller.setFloodSlice(null)
       return
     }
+    // Only draw a slice that belongs to the currently active simulation (race protection).
+    if (!fc || fc.metadata?.simulationId !== activeSimulationId) return
     controller.setFloodSlice(fc)
   }, [controller, activeSimulationId, slice.data])
 

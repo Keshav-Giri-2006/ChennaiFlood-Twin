@@ -73,6 +73,9 @@ class FloodProductStore:
             raise FloodProcessingError("Expected exactly one Ward 176 boundary feature")
         return geoms[0]
 
+    def ward_utm(self):  # type: ignore[no-untyped-def]
+        return self._ward_utm()
+
     def ensure(self, simulation_id: str, scenario_id: str, model_version: str) -> dict[str, Any]:
         """Return a valid manifest, generating products when missing or stale."""
         sid = validate_simulation_id(simulation_id)

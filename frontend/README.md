@@ -34,10 +34,13 @@ npm run build
 | `src/hooks/queries.ts` | TanStack Query hooks. Server state is keyed by simulationId/timestamp; status polling stops at COMPLETED/FAILED |
 | `src/state/viewerStore.ts` | Layer visibility, flood opacity, terrain exaggeration, selection |
 | `src/state/simulationStore.ts` | Selected scenario, tracked run, active simulation (ignores late completions) |
-| `src/state/floodStore.ts` | Selected reporting timestamp per simulation |
+| `src/state/floodStore.ts` | Selected reporting timestamp per simulation, playback (play/pause, 0.5–4× speed) |
+| `src/hooks/useTimeline.ts` | Active timeline entry, flood-state label, playback driver (advances only to preloaded actual timestamps) |
 | `src/cesium/DigitalTwinController.ts` | Single viewer lifecycle, static layers, flood layer replacement, selection/highlight, camera (`fitWard`, `resetView`) |
 | `src/cesium/terrain.ts` | `CustomHeightmapTerrainProvider` backed by `/gis/terrain` (project Copernicus DEM; masked cells get no elevation) |
-| `src/components/` | Shell, viewer, layer controls, scenario/simulation panels, flood panel + legend, KPI strip, inspector |
+| `src/components/` | Shell, viewer, layer controls, scenario/simulation panels, live KPI panel, timeline bar, Flood/Hydraulics/Exposure/Actions tabs, explainability inspector, Methodology & Limitations dialog |
+| `src/components/decision/` | Potential bottlenecks, model-derived exposure, recommendations (backend results only) and their Cesium sync |
+| `src/test/fixtures.tsx` | Clearly marked synthetic API-shaped fixtures for component tests only |
 
 ## Visualisation conventions (documented, not data changes)
 
@@ -53,6 +56,7 @@ npm run build
 
 ## Known limitations
 
-- Timeline playback (play/pause/speed) is not built yet; the flood panel steps through the actual SWMM timestamps.
-- Buildings are individual Cesium entities (6,428). Frame-rate profiling on a visible desktop browser is still to be done before considering 3D Tiles.
+- Playback steps one 30-minute SWMM reporting timestamp per second at 1×; it never interpolates states and waits for the next slice if it is not loaded.
+- Rendering is entity-based (6,428 buildings, 301 ground-clamped carriageways, 135 ground polylines). In the embedded browser on an Intel UHD iGPU the scene rendered at ~2–7 fps; hiding roads and drains raised it to ~16 fps, hiding buildings to ~5 fps, so ground-clamped layers are the first optimisation target. Profile on the demo machine before considering primitives or 3D Tiles.
+- Bottleneck, exposure and recommendation logic lives in the backend; the frontend only displays, highlights and filters.
 - In development, React StrictMode mounts the viewer twice (create → destroy → create); production mounts it once.

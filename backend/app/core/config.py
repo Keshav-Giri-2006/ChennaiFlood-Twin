@@ -59,6 +59,9 @@ class Settings(BaseSettings):
     processing_version: str = Field(default="swmm-results-v1", alias="PROCESSING_VERSION")
     gis_processing_version: str = Field(default="web-gis-v1", alias="GIS_PROCESSING_VERSION")
     flood_processing_version: str = Field(default="flood-processing-v1", alias="FLOOD_PROCESSING_VERSION")
+    bottleneck_analysis_version: str = Field(default="bottleneck-analysis-v1", alias="BOTTLENECK_ANALYSIS_VERSION")
+    exposure_analysis_version: str = Field(default="exposure-analysis-v1", alias="EXPOSURE_ANALYSIS_VERSION")
+    decision_support_version: str = Field(default="decision-support-v1", alias="DECISION_SUPPORT_VERSION")
 
     # --- API ----------------------------------------------------------------
     cors_allow_origins: list[str] = Field(

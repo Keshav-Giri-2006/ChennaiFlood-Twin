@@ -104,6 +104,9 @@ def _influence_zones(node_ids: list[str], mapping_: NetworkMapping, ward: BaseGe
     return zones
 
 
+influence_zones = _influence_zones  # public name used by exposure-analysis-v1 (same zones as the flood products)
+
+
 def generate_flood_products(
     *,
     simulation_id: str,

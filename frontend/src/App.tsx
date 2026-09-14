@@ -1,11 +1,14 @@
 import { ErrorBoundary } from './components/common/ErrorBoundary'
+import { DashboardTabs } from './components/dashboard/DashboardTabs'
 import { KpiPanel } from './components/dashboard/KpiPanel'
+import { DecisionLayerSync } from './components/decision/DecisionLayerSync'
 import { FloodLayerSync } from './components/flood/FloodLayerSync'
-import { FloodPanel } from './components/flood/FloodPanel'
 import { AssetInspector } from './components/inspector/AssetInspector'
 import { Header } from './components/layout/Header'
+import { MethodologyDialog } from './components/methodology/MethodologyDialog'
 import { ScenarioPanel } from './components/simulation/ScenarioPanel'
 import { SimulationControls } from './components/simulation/SimulationControls'
+import { TimelineBar } from './components/timeline/TimelineBar'
 import { DigitalTwinViewer } from './components/viewer/DigitalTwinViewer'
 import { LayerControls } from './components/viewer/LayerControls'
 import { ViewerToolbar } from './components/viewer/ViewerToolbar'
@@ -22,8 +25,11 @@ export default function App() {
           <ErrorBoundary label="Simulation controls">
             <SimulationControls />
           </ErrorBoundary>
-          <ErrorBoundary label="Flood panel">
-            <FloodPanel />
+          <ErrorBoundary label="KPI panel">
+            <KpiPanel />
+          </ErrorBoundary>
+          <ErrorBoundary label="Decision support">
+            <DashboardTabs />
           </ErrorBoundary>
         </aside>
         <div className="viewer-overlay-top">
@@ -36,19 +42,21 @@ export default function App() {
           </ErrorBoundary>
         </aside>
         <div className="bottom-bar">
-          <ErrorBoundary label="KPI panel">
-            <KpiPanel />
+          <ErrorBoundary label="Timeline">
+            <TimelineBar />
           </ErrorBoundary>
-          <div className="timeline-placeholder" aria-label="Timeline playback">
-            Timeline playback (play / pause / speed) is planned next; step through actual SWMM timestamps in the flood panel.
-          </div>
         </div>
         <ErrorBoundary label="Flood layer">
           <FloodLayerSync />
         </ErrorBoundary>
+        <ErrorBoundary label="Decision layers">
+          <DecisionLayerSync />
+        </ErrorBoundary>
       </DigitalTwinViewer>
+      <MethodologyDialog />
       <footer className="model-note">
-        Model note: flood outputs are simulation-derived (EPA SWMM 5.2.4, candidate model ward176-hydraulic-reconstructed-v1) and depend on an incomplete drainage network with provisional outfalls, NASA GPM IMERG rainfall, Copernicus DSM terrain and modelling assumptions. Data: GCC GIS · NASA GPM IMERG · Copernicus DEM GLO-30 · © OpenStreetMap contributors.
+        Model note: results are simulation-derived (EPA SWMM 5.2.4, candidate model ward176-hydraulic-reconstructed-v1) on an incomplete drainage network with provisional outfalls. Flood zones,
+        exposure, bottlenecks and recommendations are model-derived decision support, not observations. Data: GCC GIS · NASA GPM IMERG · Copernicus DEM GLO-30 · © OpenStreetMap contributors.
       </footer>
     </div>
   )
