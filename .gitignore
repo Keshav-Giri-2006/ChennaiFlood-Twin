@@ -1,0 +1,40 @@
+# ---- Secrets / local environment (never commit) ----
+.env
+.env.*
+!.env.example
+
+# ---- Python ----
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ---- Node / frontend build ----
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# ---- Runtime outputs (simulation workspaces, results, SQLite DB) ----
+backend/runtime/
+
+# ---- Logs ----
+*.log
+logs/
+
+# ---- Large raw third-party downloads (re-acquire; see docs/03_DATA_AND_GIS.md) ----
+# Copernicus GLO-30 archive and full 1x1 degree tiles (>50 MB each). The clipped
+# Ward 176 DEM used by the application lives in data_processed/gis/.
+data_raw/dem/*.zip
+data_raw/dem/**/DEM/*.tif
+data_raw/dem/**/AUXFILES/*.tif
+
+# ---- Editors / OS ----
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db

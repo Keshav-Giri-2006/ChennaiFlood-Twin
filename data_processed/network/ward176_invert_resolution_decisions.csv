@@ -1,0 +1,136 @@
+objectid,validation_status,decision,decision_note
+5789,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5790,INVERT_ABOVE_DEM,RETAIN_FLAGGED_GCC_INVERT,DEM is DSM/~30m and not a surveyed bare-earth surface. Do not overwrite GCC invert automatically; retain with review flag.
+5791,BOUNDARY_OR_MISSING_DEM,RETAIN_GCC_INVERT,No DEM-based rejection; node is boundary/outside or lacks interior DEM context. Keep GCC invert provisionally.
+5792,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5793,SUSPICIOUS_INVERT,EXCLUDE_ANOMALOUS_INVERT,Do not use invert_end=20869. Retain segment geometry/dimensions; hydraulic downstream elevation must be established before inclusion.
+5794,BOUNDARY_OR_MISSING_DEM,RETAIN_GCC_INVERT,No DEM-based rejection; node is boundary/outside or lacks interior DEM context. Keep GCC invert provisionally.
+5795,BOUNDARY_OR_MISSING_DEM,RETAIN_GCC_INVERT,No DEM-based rejection; node is boundary/outside or lacks interior DEM context. Keep GCC invert provisionally.
+5796,BOUNDARY_OR_MISSING_DEM,RETAIN_GCC_INVERT,No DEM-based rejection; node is boundary/outside or lacks interior DEM context. Keep GCC invert provisionally.
+5797,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5798,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5799,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5800,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5801,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5802,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5803,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5804,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5805,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5806,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5807,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5808,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5809,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5810,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5811,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5812,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5813,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5814,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5815,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5816,LARGE_JUNCTION_DISCONTINUITY,RETAIN_FLAG_FOR_NODE_REVIEW,Do not force continuity by editing elevations. Inspect junction context before final SWMM node elevation assignment.
+5817,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5818,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5819,BOUNDARY_OR_MISSING_DEM,RETAIN_GCC_INVERT,No DEM-based rejection; node is boundary/outside or lacks interior DEM context. Keep GCC invert provisionally.
+5820,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5821,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5822,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5823,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5824,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5825,INVERT_ABOVE_DEM,RETAIN_FLAGGED_GCC_INVERT,DEM is DSM/~30m and not a surveyed bare-earth surface. Do not overwrite GCC invert automatically; retain with review flag.
+5826,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5827,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5828,BOUNDARY_OR_MISSING_DEM,RETAIN_GCC_INVERT,No DEM-based rejection; node is boundary/outside or lacks interior DEM context. Keep GCC invert provisionally.
+5829,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5830,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5831,INVERT_ABOVE_DEM,RETAIN_FLAGGED_GCC_INVERT,DEM is DSM/~30m and not a surveyed bare-earth surface. Do not overwrite GCC invert automatically; retain with review flag.
+5832,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5833,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5834,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5835,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5836,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5837,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5838,BOUNDARY_OR_MISSING_DEM,RETAIN_GCC_INVERT,No DEM-based rejection; node is boundary/outside or lacks interior DEM context. Keep GCC invert provisionally.
+5839,BOUNDARY_OR_MISSING_DEM,RETAIN_GCC_INVERT,No DEM-based rejection; node is boundary/outside or lacks interior DEM context. Keep GCC invert provisionally.
+5840,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5841,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5842,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5843,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5844,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5845,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5846,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5847,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5848,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5849,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5850,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5851,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5852,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5853,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5854,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5855,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5856,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5857,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5858,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5859,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5860,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5861,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5862,MINOR_SLOPE_ANOMALY,RETAIN_WITH_FLAG,Small negative slope; do not silently reverse or edit. Review against topology/outlet logic.
+5863,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5864,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5865,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5866,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5867,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5868,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5869,BOUNDARY_OR_MISSING_DEM,RETAIN_GCC_INVERT,No DEM-based rejection; node is boundary/outside or lacks interior DEM context. Keep GCC invert provisionally.
+5870,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5871,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5872,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5873,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5874,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5875,BOUNDARY_OR_MISSING_DEM,RETAIN_GCC_INVERT,No DEM-based rejection; node is boundary/outside or lacks interior DEM context. Keep GCC invert provisionally.
+5876,LARGE_JUNCTION_DISCONTINUITY,RETAIN_FLAG_FOR_NODE_REVIEW,Do not force continuity by editing elevations. Inspect junction context before final SWMM node elevation assignment.
+5877,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5878,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5879,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5880,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5881,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5882,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5883,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5884,LARGE_JUNCTION_DISCONTINUITY,RETAIN_FLAG_FOR_NODE_REVIEW,Do not force continuity by editing elevations. Inspect junction context before final SWMM node elevation assignment.
+5885,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5886,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5887,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5888,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5889,BOUNDARY_OR_MISSING_DEM,RETAIN_GCC_INVERT,No DEM-based rejection; node is boundary/outside or lacks interior DEM context. Keep GCC invert provisionally.
+5890,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5891,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5892,INVERT_ABOVE_DEM,RETAIN_FLAGGED_GCC_INVERT,DEM is DSM/~30m and not a surveyed bare-earth surface. Do not overwrite GCC invert automatically; retain with review flag.
+5893,BOUNDARY_OR_MISSING_DEM,RETAIN_GCC_INVERT,No DEM-based rejection; node is boundary/outside or lacks interior DEM context. Keep GCC invert provisionally.
+5894,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5895,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5896,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5897,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5898,INVERT_ABOVE_DEM,RETAIN_FLAGGED_GCC_INVERT,DEM is DSM/~30m and not a surveyed bare-earth surface. Do not overwrite GCC invert automatically; retain with review flag.
+5899,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5900,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5901,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5902,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5903,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5904,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5905,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5906,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5907,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5908,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5909,BOUNDARY_OR_MISSING_DEM,RETAIN_GCC_INVERT,No DEM-based rejection; node is boundary/outside or lacks interior DEM context. Keep GCC invert provisionally.
+5910,LARGE_JUNCTION_DISCONTINUITY,RETAIN_FLAG_FOR_NODE_REVIEW,Do not force continuity by editing elevations. Inspect junction context before final SWMM node elevation assignment.
+5911,BOUNDARY_OR_MISSING_DEM,RETAIN_GCC_INVERT,No DEM-based rejection; node is boundary/outside or lacks interior DEM context. Keep GCC invert provisionally.
+5912,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5913,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5914,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5915,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5916,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5917,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5918,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5919,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5920,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5921,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5922,VALID,ACCEPT_PROVISIONALLY,No screening anomaly detected.
+5923,INVERT_ABOVE_DEM,RETAIN_FLAGGED_GCC_INVERT,DEM is DSM/~30m and not a surveyed bare-earth surface. Do not overwrite GCC invert automatically; retain with review flag.

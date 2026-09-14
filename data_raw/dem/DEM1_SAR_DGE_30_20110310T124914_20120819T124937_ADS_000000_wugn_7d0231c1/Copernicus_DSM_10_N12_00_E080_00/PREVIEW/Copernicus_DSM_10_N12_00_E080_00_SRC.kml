@@ -1,0 +1,235 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<kml xmlns="http://www.opengis.net/kml/2.2" xmlns:gx="http://www.google.com/kml/ext/2.2" xmlns:kml="http://www.opengis.net/kml/2.2" xmlns:atom="http://www.w3.org/2005/Atom">
+  <Document>
+    <name>Copernicus_DSM_10_N12_00_E080_00</name>
+    <open>1</open>
+    <StyleMap id="red"><Pair><key>normal</key><styleUrl>#red_outline</styleUrl></Pair><Pair><key>highlight</key><styleUrl>#red_filled</styleUrl></Pair></StyleMap>
+    <Style id="red_outline"><LineStyle><color>ff0000ff</color><width>2</width></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
+    <Style id="red_filled"><LineStyle><color>ff0000ff</color><width>2</width></LineStyle><PolyStyle><color>7f0000ff</color><fill>1</fill></PolyStyle></Style>
+    <StyleMap id="blue"><Pair><key>normal</key><styleUrl>#blue_outline</styleUrl></Pair><Pair><key>highlight</key><styleUrl>#blue_filled</styleUrl></Pair></StyleMap>
+    <Style id="blue_outline"><LineStyle><color>ffff7f24</color><width>2</width></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
+    <Style id="blue_filled"><LineStyle><color>ffff7f24</color><width>2</width></LineStyle><PolyStyle><color>7fff7f24</color><fill>1</fill></PolyStyle></Style>
+    <StyleMap id="green"><Pair><key>normal</key><styleUrl>#green</styleUrl></Pair><Pair><key>highlight</key><styleUrl>#green</styleUrl></Pair></StyleMap>
+    <Style id="green"><LineStyle><color>ff00ee00</color><width>2</width></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
+    <Style id="green"><LineStyle><color>ff00ee00</color><width>2</width></LineStyle><PolyStyle><color>7f00ee00</color><fill>1</fill></PolyStyle></Style>
+    <StyleMap id="grey"><Pair><key>normal</key><styleUrl>#grey_outline</styleUrl></Pair><Pair><key>highlight</key><styleUrl>#grey_outline</styleUrl></Pair></StyleMap>
+    <Style id="grey_outline"><LineStyle><color>ff909090</color><width>4</width></LineStyle><PolyStyle><fill>0</fill></PolyStyle></Style>
+    <Folder>
+      <name>Copernicus_DSM_10_N12_00_E080_00</name>
+      <Placemark>
+        <name>1012727_01</name>
+        <styleUrl>#red</styleUrl>
+        <description>First acquisition
+2011-03-10T12:49</description>
+        <Style>
+          <BalloonStyle>
+            <text><![CDATA[<div style="width: 25em;"><table border="0" cellspacing="10" width="100%">
+            <tr><td>Acquisition Set:</td><td>First acquisition</td></tr>
+            <tr><td>Acquisition Date:</td><td>2011-03-10T12:49</td></tr>
+            <tr><td>Phase Unwrap:</td><td>single-baseline</td></tr>
+            <tr><td>Height of Ambiguity:</td><td>-41</td></tr></table></div>]]></text>
+          </BalloonStyle>
+        </Style><Polygon><outerBoundaryIs><LinearRing><coordinates>80.28521,12.969863 80.24617,13.179946 80.528816,13.230222 80.567612,13.020203 80.28521,12.969863</coordinates></LinearRing></outerBoundaryIs></Polygon>
+      </Placemark>
+      <Placemark>
+        <name>1021685_02</name>
+        <styleUrl>#red</styleUrl>
+        <description>First acquisition
+2011-07-09T12:49</description>
+        <Style>
+          <BalloonStyle>
+            <text><![CDATA[<div style="width: 25em;"><table border="0" cellspacing="10" width="100%">
+            <tr><td>Acquisition Set:</td><td>First acquisition</td></tr>
+            <tr><td>Acquisition Date:</td><td>2011-07-09T12:49</td></tr>
+            <tr><td>Phase Unwrap:</td><td>single-baseline</td></tr>
+            <tr><td>Height of Ambiguity:</td><td>47</td></tr></table></div>]]></text>
+          </BalloonStyle>
+        </Style><Polygon><outerBoundaryIs><LinearRing><coordinates>79.759117,11.657412 79.663826,12.161926 79.991615,12.221681 80.086288,11.717312 79.759117,11.657412</coordinates></LinearRing></outerBoundaryIs></Polygon>
+      </Placemark>
+      <Placemark>
+        <name>1021685_03</name>
+        <styleUrl>#red</styleUrl>
+        <description>First acquisition
+2011-07-09T12:49</description>
+        <Style>
+          <BalloonStyle>
+            <text><![CDATA[<div style="width: 25em;"><table border="0" cellspacing="10" width="100%">
+            <tr><td>Acquisition Set:</td><td>First acquisition</td></tr>
+            <tr><td>Acquisition Date:</td><td>2011-07-09T12:49</td></tr>
+            <tr><td>Phase Unwrap:</td><td>single-baseline</td></tr>
+            <tr><td>Height of Ambiguity:</td><td>47</td></tr></table></div>]]></text>
+          </BalloonStyle>
+        </Style><Polygon><outerBoundaryIs><LinearRing><coordinates>79.67601,12.098937 79.580734,12.603436 79.909065,12.66306 80.0037,12.158705 79.67601,12.098937</coordinates></LinearRing></outerBoundaryIs></Polygon>
+      </Placemark>
+      <Placemark>
+        <name>1024373_01</name>
+        <styleUrl>#red</styleUrl>
+        <description>First acquisition
+2011-05-04T12:49</description>
+        <Style>
+          <BalloonStyle>
+            <text><![CDATA[<div style="width: 25em;"><table border="0" cellspacing="10" width="100%">
+            <tr><td>Acquisition Set:</td><td>First acquisition</td></tr>
+            <tr><td>Acquisition Date:</td><td>2011-05-04T12:49</td></tr>
+            <tr><td>Phase Unwrap:</td><td>single-baseline</td></tr>
+            <tr><td>Height of Ambiguity:</td><td>-48</td></tr></table></div>]]></text>
+          </BalloonStyle>
+        </Style><Polygon><outerBoundaryIs><LinearRing><coordinates>80.167366,12.35256 80.102791,12.698228 80.401703,12.751894 80.465874,12.406331 80.167366,12.35256</coordinates></LinearRing></outerBoundaryIs></Polygon>
+      </Placemark>
+      <Placemark>
+        <name>1024373_02</name>
+        <styleUrl>#red</styleUrl>
+        <description>First acquisition
+2011-05-04T12:49</description>
+        <Style>
+          <BalloonStyle>
+            <text><![CDATA[<div style="width: 25em;"><table border="0" cellspacing="10" width="100%">
+            <tr><td>Acquisition Set:</td><td>First acquisition</td></tr>
+            <tr><td>Acquisition Date:</td><td>2011-05-04T12:49</td></tr>
+            <tr><td>Phase Unwrap:</td><td>single-baseline</td></tr>
+            <tr><td>Height of Ambiguity:</td><td>-48</td></tr></table></div>]]></text>
+          </BalloonStyle>
+        </Style><Polygon><outerBoundaryIs><LinearRing><coordinates>80.114594,12.63523 80.020416,13.139518 80.319878,13.19305 80.413437,12.688915 80.114594,12.63523</coordinates></LinearRing></outerBoundaryIs></Polygon>
+      </Placemark>
+      <Placemark>
+        <name>1024387_01</name>
+        <styleUrl>#red</styleUrl>
+        <description>First acquisition
+2011-05-15T12:49</description>
+        <Style>
+          <BalloonStyle>
+            <text><![CDATA[<div style="width: 25em;"><table border="0" cellspacing="10" width="100%">
+            <tr><td>Acquisition Set:</td><td>First acquisition</td></tr>
+            <tr><td>Acquisition Date:</td><td>2011-05-15T12:49</td></tr>
+            <tr><td>Phase Unwrap:</td><td>single-baseline</td></tr>
+            <tr><td>Height of Ambiguity:</td><td>-46</td></tr></table></div>]]></text>
+          </BalloonStyle>
+        </Style><Polygon><outerBoundaryIs><LinearRing><coordinates>79.954948,12.051846 79.919762,12.239169 80.214531,12.292599 80.249504,12.105328 79.954948,12.051846</coordinates></LinearRing></outerBoundaryIs></Polygon>
+      </Placemark>
+      <Placemark>
+        <name>1024387_02</name>
+        <styleUrl>#red</styleUrl>
+        <description>First acquisition
+2011-05-15T12:49</description>
+        <Style>
+          <BalloonStyle>
+            <text><![CDATA[<div style="width: 25em;"><table border="0" cellspacing="10" width="100%">
+            <tr><td>Acquisition Set:</td><td>First acquisition</td></tr>
+            <tr><td>Acquisition Date:</td><td>2011-05-15T12:49</td></tr>
+            <tr><td>Phase Unwrap:</td><td>single-baseline</td></tr>
+            <tr><td>Height of Ambiguity:</td><td>-45</td></tr></table></div>]]></text>
+          </BalloonStyle>
+        </Style><Polygon><outerBoundaryIs><LinearRing><coordinates>79.937187,12.146997 79.842453,12.651406 80.137688,12.70472 80.231834,12.200451 79.937187,12.146997</coordinates></LinearRing></outerBoundaryIs></Polygon>
+      </Placemark>
+      <Placemark>
+        <name>1024387_03</name>
+        <styleUrl>#red</styleUrl>
+        <description>First acquisition
+2011-05-15T12:49</description>
+        <Style>
+          <BalloonStyle>
+            <text><![CDATA[<div style="width: 25em;"><table border="0" cellspacing="10" width="100%">
+            <tr><td>Acquisition Set:</td><td>First acquisition</td></tr>
+            <tr><td>Acquisition Date:</td><td>2011-05-15T12:49</td></tr>
+            <tr><td>Phase Unwrap:</td><td>single-baseline</td></tr>
+            <tr><td>Height of Ambiguity:</td><td>-45</td></tr></table></div>]]></text>
+          </BalloonStyle>
+        </Style><Polygon><outerBoundaryIs><LinearRing><coordinates>79.854492,12.588421 79.759789,13.092814 80.055542,13.146002 80.149635,12.641747 79.854492,12.588421</coordinates></LinearRing></outerBoundaryIs></Polygon>
+      </Placemark>
+      <Placemark>
+        <name>1080886_01</name>
+        <styleUrl>#blue</styleUrl>
+        <description>Second acquisition
+2012-08-19T12:49</description>
+        <Style>
+          <BalloonStyle>
+            <text><![CDATA[<div style="width: 25em;"><table border="0" cellspacing="10" width="100%">
+            <tr><td>Acquisition Set:</td><td>Second acquisition</td></tr>
+            <tr><td>Acquisition Date:</td><td>2012-08-19T12:49</td></tr>
+            <tr><td>Phase Unwrap:</td><td>multi-baseline</td></tr>
+            <tr><td>Height of Ambiguity:</td><td>32</td></tr></table></div>]]></text>
+          </BalloonStyle>
+        </Style><Polygon><outerBoundaryIs><LinearRing><coordinates>79.839325,11.840184 79.77491,12.181989 80.064484,12.234668 80.128525,11.892953 79.839325,11.840184</coordinates></LinearRing></outerBoundaryIs></Polygon>
+      </Placemark>
+      <Placemark>
+        <name>1080886_02</name>
+        <styleUrl>#blue</styleUrl>
+        <description>Second acquisition
+2012-08-19T12:49</description>
+        <Style>
+          <BalloonStyle>
+            <text><![CDATA[<div style="width: 25em;"><table border="0" cellspacing="10" width="100%">
+            <tr><td>Acquisition Set:</td><td>Second acquisition</td></tr>
+            <tr><td>Acquisition Date:</td><td>2012-08-19T12:49</td></tr>
+            <tr><td>Phase Unwrap:</td><td>multi-baseline</td></tr>
+            <tr><td>Height of Ambiguity:</td><td>32</td></tr></table></div>]]></text>
+          </BalloonStyle>
+        </Style><Polygon><outerBoundaryIs><LinearRing><coordinates>79.78698,12.118987 79.691917,12.623437 79.981987,12.675999 80.076469,12.171679 79.78698,12.118987</coordinates></LinearRing></outerBoundaryIs></Polygon>
+      </Placemark>
+      <Placemark>
+        <name>1083820_01</name>
+        <styleUrl>#blue</styleUrl>
+        <description>Second acquisition
+2012-07-06T12:49</description>
+        <Style>
+          <BalloonStyle>
+            <text><![CDATA[<div style="width: 25em;"><table border="0" cellspacing="10" width="100%">
+            <tr><td>Acquisition Set:</td><td>Second acquisition</td></tr>
+            <tr><td>Acquisition Date:</td><td>2012-07-06T12:49</td></tr>
+            <tr><td>Phase Unwrap:</td><td>multi-baseline</td></tr>
+            <tr><td>Height of Ambiguity:</td><td>-31</td></tr></table></div>]]></text>
+          </BalloonStyle>
+        </Style><Polygon><outerBoundaryIs><LinearRing><coordinates>80.030792,12.198886 79.942612,12.669354 80.228195,12.720819 80.315849,12.250481 80.030792,12.198886</coordinates></LinearRing></outerBoundaryIs></Polygon>
+      </Placemark>
+      <Placemark>
+        <name>1083820_02</name>
+        <styleUrl>#blue</styleUrl>
+        <description>Second acquisition
+2012-07-06T12:49</description>
+        <Style>
+          <BalloonStyle>
+            <text><![CDATA[<div style="width: 25em;"><table border="0" cellspacing="10" width="100%">
+            <tr><td>Acquisition Set:</td><td>Second acquisition</td></tr>
+            <tr><td>Acquisition Date:</td><td>2012-07-06T12:49</td></tr>
+            <tr><td>Phase Unwrap:</td><td>single-baseline</td></tr>
+            <tr><td>Height of Ambiguity:</td><td>-31</td></tr></table></div>]]></text>
+          </BalloonStyle>
+        </Style><Polygon><outerBoundaryIs><LinearRing><coordinates>79.954529,12.606354 79.860016,13.110704 80.146118,13.162046 80.240036,12.657834 79.954529,12.606354</coordinates></LinearRing></outerBoundaryIs></Polygon>
+      </Placemark>
+      <Placemark>
+        <name>1085548_01</name>
+        <styleUrl>#blue</styleUrl>
+        <description>Second acquisition
+2012-06-03T12:49</description>
+        <Style>
+          <BalloonStyle>
+            <text><![CDATA[<div style="width: 25em;"><table border="0" cellspacing="10" width="100%">
+            <tr><td>Acquisition Set:</td><td>Second acquisition</td></tr>
+            <tr><td>Acquisition Date:</td><td>2012-06-03T12:49</td></tr>
+            <tr><td>Phase Unwrap:</td><td>multi-baseline</td></tr>
+            <tr><td>Height of Ambiguity:</td><td>-32</td></tr></table></div>]]></text>
+          </BalloonStyle>
+        </Style><Polygon><outerBoundaryIs><LinearRing><coordinates>80.215096,12.555794 80.180176,12.743065 80.451477,12.791677 80.486191,12.604459 80.215096,12.555794</coordinates></LinearRing></outerBoundaryIs></Polygon>
+      </Placemark>
+      <Placemark>
+        <name>1085548_02</name>
+        <styleUrl>#blue</styleUrl>
+        <description>Second acquisition
+2012-06-03T12:49</description>
+        <Style>
+          <BalloonStyle>
+            <text><![CDATA[<div style="width: 25em;"><table border="0" cellspacing="10" width="100%">
+            <tr><td>Acquisition Set:</td><td>Second acquisition</td></tr>
+            <tr><td>Acquisition Date:</td><td>2012-06-03T12:49</td></tr>
+            <tr><td>Phase Unwrap:</td><td>multi-baseline</td></tr>
+            <tr><td>Height of Ambiguity:</td><td>-32</td></tr></table></div>]]></text>
+          </BalloonStyle>
+        </Style><Polygon><outerBoundaryIs><LinearRing><coordinates>80.19754,12.65012 80.103539,13.154356 80.375298,13.202852 80.468727,12.698758 80.19754,12.65012</coordinates></LinearRing></outerBoundaryIs></Polygon>
+      </Placemark>
+      <Placemark>
+        <name>TDM1_DEM__04_N12E080</name>
+        <styleUrl>#grey</styleUrl><Polygon><outerBoundaryIs><LinearRing><coordinates>79.999944,11.999944 79.999944,13.000056 81.000056,13.000056 81.000056,11.999944 79.999944,11.999944</coordinates></LinearRing></outerBoundaryIs></Polygon>
+      </Placemark>
+    </Folder>
+  </Document>
+</kml>

@@ -1,0 +1,8 @@
+node_id,longitude,latitude,dem_surface_m,distance_to_boundary_m,incoming_conduits,candidate_outlet_invert_m,evidence,reconstructed_node,reconstructed_component_id
+125,80.20732631999623,12.979379852625629,0.0,0.1087000798366745,5790,2.056,Boundary-near + terminal under provisional invert-gradient direction,127,25
+98,80.21528148370851,12.977772152853928,9.792387008666992,0.1653614505327572,5889,1.783,Boundary-near + terminal under provisional invert-gradient direction,100,2
+140,80.20653863135841,12.980375356289471,0.0,0.2549570342902028,5819,2.533,Boundary-near + terminal under provisional invert-gradient direction,143,25
+94,80.20929841505182,12.977565954196043,5.401801109313965,0.493815240316894,5840,2.653,Boundary-near + terminal under provisional invert-gradient direction,96,12
+88,80.20929257283937,12.977057299449276,0.0,0.6075650965592824,5839,3.301,Boundary-near + terminal under provisional invert-gradient direction,90,12
+97,80.21527399452785,12.977746514376744,9.792387008666992,0.6283529774356558,5872,4.442,Boundary-near + terminal under provisional invert-gradient direction,99,24
+213,80.21001839355259,12.986176739422152,12.69763469696045,0.8417467251758715,5794,3.119,Boundary-near + terminal under provisional invert-gradient direction,218,29

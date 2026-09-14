@@ -1,0 +1,37 @@
+{
+  "scenarios": [
+    {
+      "scenarioId": "michaung-2023",
+      "name": "Michaung 2023",
+      "event": "Cyclone Michaung",
+      "description": "Historical rainfall scenario for the December 2023 Cyclone Michaung event over Ward 176, Velachery.",
+      "rainfallType": "historical",
+      "source": {
+        "name": "NASA GPM IMERG Final Run",
+        "variable": "GPM_3IMERGHH v07",
+        "retrieval": "NASA Giovanni area-averaged time series"
+      },
+      "rainfall": {
+        "rawFile": "rainfall/michaung_2023/imerg_michaung_2023_raw.csv",
+        "sha256": "78fa84538bc68f8c48c16457639050e5487410693c0f0e4707840a10033feb6a",
+        "valueColumn": "mean_GPM_3IMERGHH_07_precipitation",
+        "valueType": "intensity",
+        "unit": "mm/hr",
+        "intervalMinutes": 30,
+        "timeBasis": "UTC",
+        "timestampConvention": "interval start"
+      },
+      "compatibleModels": {
+        "ward176-hydraulic-reconstructed-v1": {
+          "rainGage": "GAGE_MICH",
+          "timeseriesName": "Michaung",
+          "inputPreparation": "copy-baseline"
+        }
+      },
+      "limitations": [
+        "Rainfall is a single coarse IMERG grid-cell (0.1 degree) area-averaged series, not dense street-level gauge observations.",
+        "The same rainfall series is applied uniformly to all 35 model subcatchments."
+      ]
+    }
+  ]
+}

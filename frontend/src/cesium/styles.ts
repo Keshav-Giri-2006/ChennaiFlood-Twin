@@ -1,0 +1,31 @@
+import { Color } from 'cesium'
+
+/**
+ * Visual styling only. Flood colours map backend-provided states/classes to colours;
+ * no thresholds are defined here.
+ */
+export const LAYER_COLORS = {
+  boundary: Color.fromCssColorString('#f5c542'),
+  building: Color.fromCssColorString('#d9d4c7').withAlpha(0.92),
+  buildingUnderFlood: Color.fromCssColorString('#d9d4c7').withAlpha(0.35),
+  road: Color.fromCssColorString('#6b7280').withAlpha(0.75),
+  subcatchment: Color.fromCssColorString('#8b5cf6').withAlpha(0.18),
+  drainModelled: Color.fromCssColorString('#22d3ee'),
+  drainNotModelled: Color.fromCssColorString('#94a3b8'),
+  highlight: Color.fromCssColorString('#ff3d7f'),
+}
+
+/** Uniform extrusion used purely for 3D context: the project has no building height data. */
+export const BUILDING_VISUAL_EXTRUSION_M = 6
+
+export const FLOOD_CLASS_COLORS: Record<string, string> = {
+  LOW: '#7dd3fc',
+  MODERATE: '#3b82f6',
+  HIGH: '#1e3a8a',
+}
+export const SURCHARGED_COLOR = '#f59e0b'
+
+export function floodColor(state: string, overflowClass: string | null, alpha: number): Color {
+  const css = state === 'FLOODING' ? FLOOD_CLASS_COLORS[overflowClass ?? 'LOW'] ?? FLOOD_CLASS_COLORS.LOW : SURCHARGED_COLOR
+  return Color.fromCssColorString(css).withAlpha(alpha)
+}

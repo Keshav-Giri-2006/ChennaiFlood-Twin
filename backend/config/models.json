@@ -1,0 +1,38 @@
+{
+  "models": [
+    {
+      "modelVersion": "ward176-hydraulic-reconstructed-v1",
+      "name": "Ward 176 hydraulic reconstructed candidate",
+      "description": "Current reconstructed Ward 176 EPA SWMM candidate model (Dynamic Wave, CMS). Controlled candidate model; not calibrated or field-validated.",
+      "approved": true,
+      "engine": "EPA SWMM",
+      "engineVersion": "5.2.4",
+      "inpFile": "ward176_hydraulic_reconstructed_candidate.inp",
+      "sha256": "bb54b57622403473ede16f27f1f64c28c0491109f9ae5d3919b6e35d702f2b5c",
+      "expectedElements": {
+        "subcatchments": 35,
+        "nodes": 228,
+        "links": 182,
+        "rainGages": 1
+      },
+      "networkMapping": {
+        "description": "Model link IDs (Cxxx) equal recon_conduit_id; model node IDs (Jnnn/OUTnnn) equal the resolved reconstructed node number. Source GCC ObjectIDs are kept separately.",
+        "conduitsCsv": "network/ward176_resolved_conduits.csv",
+        "nodesCsv": "network/ward176_resolved_nodes.csv",
+        "invertDecisionsCsv": "network/ward176_invert_resolution_decisions.csv",
+        "conduitGeometry": "ward176_reconstructed_conduits.geojson"
+      },
+      "routing": "DYNWAVE",
+      "flowUnits": "CMS",
+      "limitations": [
+        "Drainage network connectivity is incomplete; multiple network components remain disconnected.",
+        "Outfalls in the model are provisional downstream boundary terminals, not confirmed physical outfalls.",
+        "Some GCC source invert attributes are internally inconsistent (e.g. C162, C175); they are retained and flagged, not corrected.",
+        "Manning roughness, depression storage and Green-Ampt infiltration values are first-pass modelling assumptions.",
+        "Subcatchments are first-pass GIS-derived model constructs, not official hydrological catchments.",
+        "The model is not calibrated or field-validated; SWMM flooding loss is a model diagnostic, not observed flood volume.",
+        "SWMM is a 1D drainage/hydraulic model; it does not produce a 2D/3D flood surface."
+      ]
+    }
+  ]
+}

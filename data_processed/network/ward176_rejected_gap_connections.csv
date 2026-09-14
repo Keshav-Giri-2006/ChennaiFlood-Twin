@@ -1,0 +1,18 @@
+objectid_a,end_a,objectid_b,end_b,gap_distance_m,resolution,resolution_note
+5796,END,5798,START,2.327651319314435,REJECTED,REJECT: geometry gap is small but endpoint invert mismatch is large; do not invent a vertical drop.
+5797,START,5798,START,2.327651319314435,REJECTED,REJECT: insufficient hydraulic/geometry evidence for a defensible synthetic connection.
+5814,END,5815,START,2.5813550111528336,REJECTED,REJECT: geometry gap is small but endpoint invert mismatch is large; do not invent a vertical drop.
+5872,END,5889,END,2.9502821248746685,REJECTED,REJECT: insufficient hydraulic/geometry evidence for a defensible synthetic connection.
+5869,END,5871,END,2.9701683549039104,REJECTED,REJECT: plausible confluence but retained as candidate because connection would create an additional loop/duplicate linkage between already connected drainage components.
+5894,START,5895,END,2.972104000804768,REJECTED,REJECT: endpoint flow roles are upstream-to-downstream at the gap; would not form a normal downstream continuity under provisional direction.
+5894,START,5896,END,2.972104000804768,REJECTED,REJECT: endpoint flow roles are upstream-to-downstream at the gap; would not form a normal downstream continuity under provisional direction.
+5811,END,5812,START,4.813375724568857,REJECTED,REJECT: geometry gap is small but endpoint invert mismatch is large; do not invent a vertical drop.
+5817,END,5818,START,4.872837150833521,REJECTED,REJECT: geometry gap is small but endpoint invert mismatch is large; do not invent a vertical drop.
+5887,END,5898,START,6.9673419745591,REJECTED,REJECT: gap exceeds 5 m conservative reconstruction tolerance.
+5794,START,5921,END,7.416092123144722,REJECTED,REJECT: gap exceeds 5 m conservative reconstruction tolerance.
+5807,END,5808,START,7.703676681497739,REJECTED,REJECT: gap exceeds 5 m conservative reconstruction tolerance.
+5807,END,5899,END,7.703676681497739,REJECTED,REJECT: gap exceeds 5 m conservative reconstruction tolerance.
+5835,END,5860,END,8.209201176637244,REJECTED,REJECT: gap exceeds 5 m conservative reconstruction tolerance.
+5801,END,5915,START,8.960562056491463,REJECTED,REJECT: gap exceeds 5 m conservative reconstruction tolerance.
+5801,END,5918,END,8.960562056491463,REJECTED,REJECT: gap exceeds 5 m conservative reconstruction tolerance.
+5837,END,5851,END,9.285630246727624,REJECTED,REJECT: gap exceeds 5 m conservative reconstruction tolerance.

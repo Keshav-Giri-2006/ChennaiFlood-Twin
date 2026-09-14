@@ -1,0 +1,12 @@
+# Scientific/controlled assets are checksum-pinned (backend/config/*.json):
+# store and check out their bytes exactly, never normalise line endings.
+data_raw/**        -text
+data_processed/**  -text
+simulation/**      -text
+gis/**             -text
+*.inp              -text
+*.rpt              -text
+*.out              binary
+*.tif              binary
+*.zip              binary
+*.png              binary
