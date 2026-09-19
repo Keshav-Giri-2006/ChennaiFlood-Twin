@@ -2471,3 +2471,22 @@ and experience it as one coherent interactive system.
 The goal is not to create the most complicated 3D scene possible.
 
 The goal is to create the most **credible, understandable, responsive, and demonstrable Digital Twin possible from the available project data**.
+
+
+---
+
+# 128. Implementation Addendum — Visual Enhancement Pass (2026-09-19)
+
+Presentation-only additions. No analysis, classification or geometry changed; every effect is driven by a
+value the backend already returns for the displayed run and timestamp.
+
+| Visual | Data that drives it | Notes |
+|---|---|---|
+| **Rainfall visualisation** (`components/viewer/RainOverlay.tsx`, `cesium/rainfall.ts`) | `rainfallMmHr` of the flood-timeline entry of the displayed run at the selected timestamp | Screen-space overlay of three GPU-composited CSS layers above the Cesium canvas (no element per drop, no per-frame JavaScript). Density/opacity and fall speed follow a documented display mapping; classes LIGHT / MODERATE / HEAVY / VERY HEAVY are labels, not physics. Nothing is drawn at 0 mm/hr or when the "Rainfall visualisation" layer is off. |
+| **Simulated-time + rainfall HUD** (`components/viewer/SimulationHud.tsx`) | Same timeline entry | Large UTC simulated date/time for the presenter; never the viewer's wall-clock time. |
+| **Node states** (`cesium/styles.ts` `NODE_MARKER`) | `state` and `overflowClass` of the flood slice | Normal model nodes (new `nodes` layer, `/gis/model/nodes`) are small and muted; surcharged nodes larger; overflowing nodes largest, scaled by the backend overflow display class, with a subtle size pulse. Sizes never overlap between states (unit-tested). The SWMM classification is unchanged. |
+| **Flood slice transition** | The slice itself | A 320 ms fade-in of the influence-zone material when a new reporting timestep is shown. No value is interpolated between timesteps: the geometry and classes are exactly those of the backend slice, and no continuous 2D water surface is implied. |
+| **Potential-bottleneck emphasis** (`emphasiseBottleneck`) | Backend conduit geometry and `fromNodeId` / `toNodeId` | Selecting a bottleneck (panel button or 3D pick) draws a pulsing glow along that conduit and labelled rings at its two model junctions (e.g. J161 — C169 — J177). Severity, confidence and classification are untouched. |
+
+Lifecycle: the overlay unmounts with the React tree, the emphasis overlay is cleared on selection change,
+`Reset demo` and reloading the bottleneck layer; the node layer is loaded once and reused.

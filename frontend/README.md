@@ -53,6 +53,9 @@ npm run build
   - Colours map the backend `state`/`overflowClass`; the frontend holds no thresholds.
   - Shaded polygons are nearest-node influence zones, not flood extent, and there is no ground depth (see `docs/FLOOD_PROCESSING_METHOD.md`).
 - **Base map:** OpenStreetMap tiles (no Cesium Ion token needed).
+- **Rainfall visualisation:** a screen-space overlay whose density and speed follow the simulated rainfall intensity (mm/hr) of the displayed run at the selected timestamp. A presentation effect, not a raindrop or weather model; nothing is drawn at 0 mm/hr and it can be switched off in *Layers*.
+- **Node states:** all model nodes are drawn small and muted; SWMM-surcharged nodes are larger and brighter, overflowing nodes largest (scaled by the backend overflow class) with a subtle pulse. The classification itself is backend-only.
+- **Flood slices** fade in over 320 ms. Nothing is interpolated between the 30-minute SWMM reporting timesteps.
 
 ## Demo flow
 

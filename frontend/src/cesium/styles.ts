@@ -26,9 +26,23 @@ export const FLOOD_CLASS_COLORS: Record<string, string> = {
 }
 export const SURCHARGED_COLOR = '#f59e0b'
 
+export function floodCss(state: string, overflowClass: string | null): string {
+  return state === 'FLOODING' ? FLOOD_CLASS_COLORS[overflowClass ?? 'LOW'] ?? FLOOD_CLASS_COLORS.LOW : SURCHARGED_COLOR
+}
+
 export function floodColor(state: string, overflowClass: string | null, alpha: number): Color {
-  const css = state === 'FLOODING' ? FLOOD_CLASS_COLORS[overflowClass ?? 'LOW'] ?? FLOOD_CLASS_COLORS.LOW : SURCHARGED_COLOR
-  return Color.fromCssColorString(css).withAlpha(alpha)
+  return Color.fromCssColorString(floodCss(state, overflowClass)).withAlpha(alpha)
+}
+
+/**
+ * Node marker emphasis (display only; the SWMM state classification is unchanged).
+ * Normal nodes are small and muted, surcharged nodes clearly brighter, overflowing nodes the strongest
+ * and scaled by the backend overflow display class.
+ */
+export const NODE_MARKER = {
+  normal: { pixelSize: 5, outlineWidth: 0, color: '#94a3b8', alpha: 0.55 },
+  surcharged: { pixelSize: 12, outlineWidth: 2 },
+  flooding: { pixelSize: { LOW: 15, MODERATE: 18, HIGH: 21 } as Record<string, number>, outlineWidth: 2.5, pulseAmplitude: 2, pulsePeriodMs: 1800 },
 }
 
 /** Potential bottleneck diagnostic concern classes (backend severity). */

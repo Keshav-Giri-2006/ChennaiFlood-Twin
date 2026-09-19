@@ -8,6 +8,8 @@ export type LayerKey =
   | 'roads'
   | 'drains'
   | 'subcatchments'
+  | 'nodes'
+  | 'rain'
   | 'flood'
   | 'bottlenecks'
   | 'exposureBuildings'
@@ -62,6 +64,8 @@ export const DEFAULT_VISIBILITY: Record<LayerKey, boolean> = {
   roads: true,
   drains: true,
   subcatchments: false,
+  nodes: true,
+  rain: true,
   flood: true,
   bottlenecks: false,
   exposureBuildings: false,

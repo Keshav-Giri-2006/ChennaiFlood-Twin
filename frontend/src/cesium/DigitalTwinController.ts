@@ -1,5 +1,6 @@
 import {
   BoundingSphere,
+  CallbackProperty,
   Cartesian2,
   Cartesian3,
   Color,
@@ -28,7 +29,7 @@ import type { BottleneckFeatureProperties, BottleneckSeverity, ExposureAssetType
 import type { FeatureCollection, FloodFeatureProperties, Geometry, TerrainGrid } from '../types/gis'
 import type { LayerKey, LayerLoadState, SelectedFeature } from '../state/viewerStore'
 import { bboxOf, lineParts, linePartsAt, polygonHierarchies, polygonHierarchiesAt } from './geometry'
-import { BOTTLENECK_COLORS, BOTTLENECK_INACTIVE_COLOR, BOTTLENECK_WIDTH, BUILDING_VISUAL_EXTRUSION_M, COMPARISON_COLORS, EXPOSURE_COLORS, LAYER_COLORS, floodColor } from './styles'
+import { BOTTLENECK_COLORS, BOTTLENECK_INACTIVE_COLOR, BOTTLENECK_WIDTH, BUILDING_VISUAL_EXTRUSION_M, COMPARISON_COLORS, EXPOSURE_COLORS, LAYER_COLORS, NODE_MARKER, floodColor, floodCss } from './styles'
 import { createDemTerrainProvider, sampleDem } from './terrain'
 
 type StaticLayer = 'boundary' | 'buildings' | 'roads' | 'drains' | 'subcatchments'
@@ -71,6 +72,13 @@ type Material = MaterialProperty | undefined
 /** Draping offsets (m) above the DEM surface; drains sit above carriageways, the ward outline above both. */
 const DRAPE_OFFSET = { subcatchments: 0.3, roads: 0.5, drains: 1.0, boundary: 1.5 }
 
+/** Fade-in of a newly shown flood time slice (ms). Visual transition only; no value is interpolated. */
+const FLOOD_FADE_MS = 320
+
+/** Pulse period (ms) and width (px) of the selected potential bottleneck glow. */
+const EMPHASIS_PULSE_MS = 2200
+const EMPHASIS_WIDTH = 22
+
 const MATERIALS = {
   building: new ColorMaterialProperty(LAYER_COLORS.building),
   buildingTranslucent: new ColorMaterialProperty(LAYER_COLORS.buildingUnderFlood),
@@ -97,6 +105,14 @@ export class DigitalTwinController {
   private readonly bottleneckSource = new CustomDataSource('bottlenecks')
   private readonly focusSource = new CustomDataSource('focus')
   private readonly comparisonSource = new CustomDataSource('comparison')
+  /** All SWMM model nodes as small muted markers, so state changes read against a "normal" baseline. */
+  private readonly nodeSource = new CustomDataSource('nodes')
+  /** Emphasis overlay for the potential bottleneck currently being explained (visual only). */
+  private readonly emphasisSource = new CustomDataSource('emphasis')
+  private emphasisedLinkId: string | null = null
+  private modelNodesLoaded = false
+  /** Start of the current flood slice fade-in (performance clock, ms); visual transition only. */
+  private floodFadeStart = 0
   /** Per potential bottleneck: severity-coloured line entities and label, for time-aware restyling. */
   private readonly bottleneckStyle = new Map<string, { severity: BottleneckSeverity; lines: Entity[]; label: Entity | null }>()
   private bottleneckStateKey = ''
@@ -159,9 +175,11 @@ export class DigitalTwinController {
     this.viewer.scene.renderError.addEventListener((_scene: unknown, error: unknown) => {
       this.callbacks.onRenderError(error instanceof Error ? error.message : String(error))
     })
+    this.viewer.dataSources.add(this.nodeSource)
     this.viewer.dataSources.add(this.floodSource)
     this.viewer.dataSources.add(this.bottleneckSource)
     this.viewer.dataSources.add(this.focusSource)
+    this.viewer.dataSources.add(this.emphasisSource)
     this.viewer.dataSources.add(this.comparisonSource)
     this.comparisonSource.show = false
     this.bottleneckSource.show = false
@@ -285,6 +303,10 @@ export class DigitalTwinController {
     } else if (key === 'flood') {
       this.floodSource.show = visible
       this.updateBuildingContrast()
+    } else if (key === 'rain') {
+      // The rainfall visualisation is a screen-space overlay outside the Cesium scene (see RainOverlay).
+    } else if (key === 'nodes') {
+      this.nodeSource.show = visible
     } else if (key === 'comparison') {
       this.comparisonSource.show = visible
     } else if (key === 'bottlenecks') {
@@ -331,11 +353,34 @@ export class DigitalTwinController {
     this.render()
   }
 
+  // ---- model nodes (context for node states) -------------------------------------------------------
+  /** All SWMM model nodes drawn small and muted; flood slices draw the stressed ones on top. */
+  setModelNodes(fc: FeatureCollection | null): void {
+    if (this.modelNodesLoaded || !fc) return
+    const entities = this.nodeSource.entities
+    entities.suspendEvents()
+    entities.removeAll()
+    const color = Color.fromCssColorString(NODE_MARKER.normal.color).withAlpha(NODE_MARKER.normal.alpha)
+    for (const feature of fc.features) {
+      if (feature.geometry.type !== 'Point') continue
+      const [lon, lat] = feature.geometry.coordinates as [number, number]
+      entities.add({
+        position: Cartesian3.fromDegrees(lon, lat),
+        point: { pixelSize: NODE_MARKER.normal.pixelSize, color, heightReference: HeightReference.CLAMP_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY },
+      })
+    }
+    entities.resumeEvents()
+    this.modelNodesLoaded = true
+    this.callbacks.onLayerState('nodes', { state: 'ready', featureCount: entities.values.length })
+    this.render()
+  }
+
   // ---- flood (dynamic) --------------------------------------------------------------------------
   /** Replace the flood layer content with one backend time slice (null clears it). Static layers are untouched. */
   setFloodSlice(fc: FeatureCollection<FloodFeatureProperties> | null): void {
     if (fc === this.floodFeatures) return
     const started = performance.now()
+    this.floodFadeStart = started
     const reselect = this.selected?.ref.feature.layer === 'flood' ? this.selected.ref.feature.id : null
     if (reselect) this.restoreSelection()
     this.floodFeatures = fc
@@ -351,7 +396,7 @@ export class DigitalTwinController {
         const ref: FeatureRef = { feature: { layer: 'flood', id: `${p.featureType}:${p.nodeId}`, properties: { ...p, time: fc.metadata?.time } as unknown as Record<string, unknown> }, entities: [] }
         if (p.featureType === 'influenceZone') {
           for (const hierarchy of polygonHierarchies(feature.geometry)) {
-            const e = entities.add({ polygon: { hierarchy, material: floodColor(p.state, p.overflowClass, this.floodOpacity * 0.7) } })
+            const e = entities.add({ polygon: { hierarchy, material: this.zoneMaterial(p) } })
             ref.entities.push(e)
             this.floodFeatureByEntity.set(e, ref)
           }
@@ -360,10 +405,10 @@ export class DigitalTwinController {
           const e = entities.add({
             position: Cartesian3.fromDegrees(lon, lat),
             point: {
-              pixelSize: p.state === 'FLOODING' ? 12 : 9,
+              pixelSize: this.nodePixelSize(p),
               color: floodColor(p.state, p.overflowClass, 1),
-              outlineColor: LAYER_COLORS.boundary.withAlpha(0.9),
-              outlineWidth: 1.5,
+              outlineColor: p.state === 'FLOODING' ? Color.WHITE.withAlpha(0.95) : LAYER_COLORS.boundary.withAlpha(0.9),
+              outlineWidth: p.state === 'FLOODING' ? NODE_MARKER.flooding.outlineWidth : NODE_MARKER.surcharged.outlineWidth,
               heightReference: HeightReference.CLAMP_TO_GROUND,
               disableDepthTestDistance: Number.POSITIVE_INFINITY,
             },
@@ -406,9 +451,38 @@ export class DigitalTwinController {
     for (const [entity, ref] of this.floodFeatureByEntity) {
       if (this.selected?.ref === ref) continue
       const p = ref.feature.properties as unknown as FloodFeatureProperties
-      if (entity.polygon) entity.polygon.material = new ColorMaterialProperty(floodColor(p.state, p.overflowClass, opacity * 0.7))
+      if (entity.polygon) entity.polygon.material = this.zoneMaterial(p)
     }
     this.render()
+  }
+
+  /**
+   * Influence-zone material with a short fade-in when a new time slice is shown. The fade is a visual
+   * transition between the discrete SWMM reporting timesteps only: nothing is interpolated, and the
+   * geometry and display classes are exactly those of the backend slice.
+   */
+  private zoneMaterial(p: FloodFeatureProperties): ColorMaterialProperty {
+    const base = Color.fromCssColorString(floodCss(p.state, p.overflowClass))
+    const target = this.floodOpacity * 0.7
+    const fadeStart = this.floodFadeStart
+    const scratch = new Color()
+    return new ColorMaterialProperty(
+      new CallbackProperty(() => {
+        const progress = Math.min(1, (performance.now() - fadeStart) / FLOOD_FADE_MS)
+        return Color.fromAlpha(base, target * progress, scratch)
+      }, false),
+    )
+  }
+
+  /**
+   * Marker size per node state. Overflowing nodes are larger (scaled by the backend overflow display
+   * class) and pulse slightly so stress is visible during playback; the classification is unchanged.
+   */
+  private nodePixelSize(p: FloodFeatureProperties): number | CallbackProperty {
+    if (p.state !== 'FLOODING') return NODE_MARKER.surcharged.pixelSize
+    const base = NODE_MARKER.flooding.pixelSize[p.overflowClass ?? 'LOW'] ?? NODE_MARKER.flooding.pixelSize.LOW
+    const { pulseAmplitude, pulsePeriodMs } = NODE_MARKER.flooding
+    return new CallbackProperty(() => base + pulseAmplitude * Math.sin((performance.now() / pulsePeriodMs) * Math.PI * 2), false)
   }
 
   get currentFloodFeatureCount(): number {
@@ -477,6 +551,7 @@ export class DigitalTwinController {
   // ---- potential bottlenecks (dynamic, per simulation) ------------------------------------------------
   setBottlenecks(fc: FeatureCollection<BottleneckFeatureProperties> | null, nodes: BottleneckNodeMarker[] = []): void {
     if (this.selected?.ref.feature.layer === 'bottlenecks') this.clearSelection()
+    this.emphasiseBottleneck(null)
     this.bottleneckFeatures = fc
     const entities = this.bottleneckSource.entities
     entities.suspendEvents()
@@ -590,7 +665,72 @@ export class DigitalTwinController {
     const ref = [...new Set(this.bottleneckFeatureByEntity.values())].find((r) => r.feature.id === linkId)
     if (!ref) return false
     this.highlight(ref)
+    this.emphasiseBottleneck(linkId)
     this.callbacks.onSelect(ref.feature)
+    return true
+  }
+
+  get emphasisedBottleneck(): string | null {
+    return this.emphasisedLinkId
+  }
+
+  /**
+   * Visual emphasis of the conduit a bottleneck explanation is about (e.g. C169, J161 -> J177):
+   * a pulsing glow along the backend conduit geometry plus rings and labels at its two model junctions.
+   * Purely presentational: it adds no analysis and does not change severity, confidence or classification.
+   * ``null`` clears it.
+   */
+  emphasiseBottleneck(linkId: string | null): boolean {
+    if (linkId === this.emphasisedLinkId) return linkId !== null
+    this.emphasisedLinkId = linkId
+    const entities = this.emphasisSource.entities
+    entities.suspendEvents()
+    entities.removeAll()
+    const feature = linkId ? this.bottleneckFeatures?.features.find((f) => f.properties.linkId === linkId) : undefined
+    if (!feature) {
+      entities.resumeEvents()
+      this.emphasisedLinkId = feature ? linkId : null
+      this.render()
+      return false
+    }
+    const p = feature.properties
+    const color = Color.fromCssColorString(BOTTLENECK_COLORS[p.severity] ?? BOTTLENECK_COLORS.LOW)
+    const glow = new ColorMaterialProperty(
+      new CallbackProperty((_time, result) => {
+        const pulse = 0.35 + 0.25 * (0.5 + 0.5 * Math.sin((performance.now() / EMPHASIS_PULSE_MS) * Math.PI * 2))
+        return Color.fromAlpha(color, pulse, result as Color | undefined)
+      }, false),
+    )
+    const parts = lineParts(feature.geometry)
+    for (const part of parts) {
+      entities.add({ polyline: { positions: part, width: EMPHASIS_WIDTH, clampToGround: true, zIndex: 5, material: glow } })
+    }
+    const ends = coordinates(feature.geometry)
+    const junctions: [string | undefined, [number, number] | undefined][] = [
+      [p.fromNodeId, ends[0]],
+      [p.toNodeId, ends[ends.length - 1]],
+    ]
+    for (const [nodeId, position] of junctions) {
+      if (!nodeId || !position) continue
+      entities.add({
+        position: Cartesian3.fromDegrees(position[0], position[1]),
+        point: { pixelSize: 20, color: Color.TRANSPARENT, outlineColor: color, outlineWidth: 3, heightReference: HeightReference.CLAMP_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY },
+        label: {
+          text: nodeId,
+          font: 'bold 12px sans-serif',
+          fillColor: Color.WHITE,
+          outlineColor: Color.BLACK,
+          outlineWidth: 3,
+          style: LabelStyle.FILL_AND_OUTLINE,
+          verticalOrigin: VerticalOrigin.TOP,
+          pixelOffset: new Cartesian2(0, 14),
+          heightReference: HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+      })
+    }
+    entities.resumeEvents()
+    this.render()
     return true
   }
 
@@ -741,6 +881,7 @@ export class DigitalTwinController {
       return
     }
     this.highlight(ref)
+    this.emphasiseBottleneck(ref.feature.layer === 'bottlenecks' ? ref.feature.id : null)
     this.callbacks.onSelect(ref.feature)
   }
 
@@ -776,6 +917,7 @@ export class DigitalTwinController {
 
   clearSelection(): void {
     const had = this.selected !== null
+    this.emphasiseBottleneck(null)
     this.restoreSelection()
     if (had) this.callbacks.onSelect(null)
     this.render()

@@ -1,4 +1,4 @@
-import { BOTTLENECK_COLORS, BOTTLENECK_INACTIVE_COLOR, COMPARISON_COLORS, EXPOSURE_COLORS, FLOOD_CLASS_COLORS, SURCHARGED_COLOR } from '../../cesium/styles'
+import { BOTTLENECK_COLORS, BOTTLENECK_INACTIVE_COLOR, COMPARISON_COLORS, EXPOSURE_COLORS, FLOOD_CLASS_COLORS, NODE_MARKER, SURCHARGED_COLOR } from '../../cesium/styles'
 import { useActiveTimeline } from '../../hooks/useTimeline'
 import { useViewerStore } from '../../state/viewerStore'
 
@@ -24,6 +24,7 @@ export function MapLegend() {
         {visibility.boundary && <Item color="#f5c542" line label="Ward 176 boundary" />}
         {visibility.drains && <Item color="#22d3ee" line label="Drain in SWMM model" />}
         {visibility.drains && <Item color="#94a3b8" line label="Drain not modelled" />}
+        {visibility.nodes && <Item color={NODE_MARKER.normal.color} label="Drainage node, no reported stress" />}
       </ul>
       {visibility.flood && timeline && (
         <>

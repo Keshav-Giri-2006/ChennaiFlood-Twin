@@ -12,12 +12,18 @@ import { TimelineBar } from './components/timeline/TimelineBar'
 import { DigitalTwinViewer } from './components/viewer/DigitalTwinViewer'
 import { LayerControls } from './components/viewer/LayerControls'
 import { MapLegend } from './components/viewer/MapLegend'
+import { RainOverlay } from './components/viewer/RainOverlay'
+import { SceneSync } from './components/viewer/SceneSync'
+import { SimulationHud } from './components/viewer/SimulationHud'
 import { ViewerToolbar } from './components/viewer/ViewerToolbar'
 
 export default function App() {
   return (
     <div className="app-shell">
       <DigitalTwinViewer before={<Header />}>
+        <ErrorBoundary label="Rainfall visualisation">
+          <RainOverlay />
+        </ErrorBoundary>
         <aside className="sidebar sidebar-left">
           <ErrorBoundary label="Scenario panel">
             <ScenarioPanel />
@@ -33,6 +39,9 @@ export default function App() {
           </ErrorBoundary>
         </aside>
         <div className="viewer-overlay-top">
+          <ErrorBoundary label="Simulation heads-up display">
+            <SimulationHud />
+          </ErrorBoundary>
           <ViewerToolbar />
         </div>
         <aside className="sidebar sidebar-right">
@@ -49,6 +58,9 @@ export default function App() {
         </div>
         <ErrorBoundary label="Flood layer">
           <FloodLayerSync />
+        </ErrorBoundary>
+        <ErrorBoundary label="Scene effects">
+          <SceneSync />
         </ErrorBoundary>
         <ErrorBoundary label="Decision layers">
           <DecisionLayerSync />

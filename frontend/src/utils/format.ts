@@ -11,6 +11,17 @@ export function formatTimestampUtc(iso: string | null | undefined): string {
   return `${pad(d.getUTCDate())} ${MONTHS[d.getUTCMonth()]} ${d.getUTCFullYear()} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC`
 }
 
+const MONTHS_UPPER = MONTHS.map((m) => m.toUpperCase())
+
+/** "03 DEC 2023" / "22:00 UTC" of a simulated reporting timestamp (never the viewer's wall-clock time). */
+export function simulatedDateParts(iso: string | null | undefined): { date: string; time: string } | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return { date: `${pad(d.getUTCDate())} ${MONTHS_UPPER[d.getUTCMonth()]} ${d.getUTCFullYear()}`, time: `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())} UTC` }
+}
+
 export function formatNumber(value: number | null | undefined, maxFractionDigits = 2): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return '—'
   return value.toLocaleString('en-IN', { maximumFractionDigits: maxFractionDigits })

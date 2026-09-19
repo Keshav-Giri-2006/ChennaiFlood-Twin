@@ -251,3 +251,49 @@ details summary { cursor: pointer; color: var(--accent); margin: 4px 0; }
 .rainfall-details summary { margin: 2px 0; }
 .timeline-scale > span:first-child, .timeline-scale > span:last-child { flex-shrink: 0; }
 .timeline-scale > span:nth-child(2) { overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+
+/* ---- Prompt 6: simulated-time / rainfall HUD and rain classes ---- */
+.viewer-overlay-top { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.sim-hud {
+  display: flex; gap: 14px; align-items: stretch; pointer-events: none;
+  background: var(--panel); border: 1px solid var(--panel-border); border-radius: 8px; padding: 6px 12px; backdrop-filter: blur(4px);
+}
+.hud-time, .hud-rain { display: flex; flex-direction: column; justify-content: center; }
+.hud-rain { border-left: 1px solid var(--panel-border); padding-left: 14px; min-width: 150px; }
+.hud-date { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; color: var(--muted); }
+.hud-clock { font-size: 22px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.hud-caption { font-size: 10.5px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.hud-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+.hud-value { font-size: 18px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.hud-unit { font-size: 12px; font-weight: 500; color: var(--muted); }
+.hud-class { font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; color: var(--accent); }
+.rain-none { color: var(--muted); }
+.rain-light { color: #7dd3fc; }
+.rain-moderate { color: #38bdf8; }
+.rain-heavy { color: #60a5fa; }
+.rain-very-heavy { color: #a78bfa; }
+.hud-bar { display: block; height: 4px; margin-top: 3px; border-radius: 2px; background: rgba(148, 163, 184, 0.2); overflow: hidden; }
+.hud-bar > span { display: block; height: 100%; background: var(--accent); border-radius: 2px; }
+
+/* ---- Prompt 6: rainfall visualisation overlay (presentation effect) ---- */
+.rain-overlay { position: absolute; inset: 0; pointer-events: none; overflow: hidden; opacity: var(--rain-opacity, 0.3); }
+.rain-layer {
+  position: absolute; left: -10%; right: -10%; top: -100%; bottom: -100%;
+  background-repeat: repeat;
+  animation-name: rain-fall; animation-timing-function: linear; animation-iteration-count: infinite;
+  will-change: transform;
+}
+@keyframes rain-fall { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-4%, 50%, 0); } }
+.rain-back {
+  background-image: repeating-linear-gradient(104deg, rgba(226, 240, 255, 0) 0 44px, rgba(226, 240, 255, 0.6) 44px 46px, rgba(226, 240, 255, 0) 46px 96px);
+  animation-duration: calc(var(--rain-duration, 1.5s) * 2.1); opacity: 0.55;
+}
+.rain-mid {
+  background-image: repeating-linear-gradient(102deg, rgba(232, 244, 255, 0) 0 60px, rgba(232, 244, 255, 0.75) 60px 63px, rgba(232, 244, 255, 0) 63px 132px);
+  animation-duration: calc(var(--rain-duration, 1.5s) * 1.4); opacity: 0.8;
+}
+.rain-front {
+  background-image: repeating-linear-gradient(100deg, rgba(240, 249, 255, 0) 0 104px, rgba(240, 249, 255, 0.95) 84px 88px, rgba(240, 249, 255, 0) 88px 186px);
+  animation-duration: var(--rain-duration, 1.5s);
+}
+@media (prefers-reduced-motion: reduce) { .rain-layer { animation: none; } }

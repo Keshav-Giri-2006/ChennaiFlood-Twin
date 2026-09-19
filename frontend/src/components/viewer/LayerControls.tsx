@@ -9,6 +9,8 @@ const LAYERS: { key: LayerKey; label: string; hint?: string }[] = [
   { key: 'roads', label: 'Roads (carriageways)' },
   { key: 'drains', label: 'Storm-water drains', hint: 'cyan = in SWMM model, grey = not modelled' },
   { key: 'subcatchments', label: 'Model subcatchments', hint: 'first-pass model constructs' },
+  { key: 'nodes', label: 'Drainage nodes (SWMM)', hint: 'all model nodes; stressed ones are drawn by the flood layer' },
+  { key: 'rain', label: 'Rainfall visualisation', hint: 'presentation overlay driven by the simulated rainfall intensity of the displayed timestep' },
   { key: 'flood', label: 'Simulated node flooding', hint: 'model-derived influence zones, not flood extent' },
   { key: 'bottlenecks', label: 'Potential bottlenecks', hint: 'model diagnostics, not confirmed failures' },
   { key: 'exposureBuildings', label: 'Model-derived building exposure', hint: 'buildings intersecting influence zones of overflowing nodes' },

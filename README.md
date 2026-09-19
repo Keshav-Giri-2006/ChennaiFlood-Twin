@@ -167,8 +167,8 @@ Details are in [`docs/DOCKER_DEPLOYMENT.md`](docs/DOCKER_DEPLOYMENT.md).
 1. **Open:** the Ward 176 3D scene with terrain, buildings, roads and drains (**Layers**, **Map legend**).
 2. **Rainfall scenario:** Michaung 2023 IMERG rainfall.
 3. **Load verified demo result**, or **Run simulation** to show live progress.
-4. **Timeline:** press ▶ to play, then **Go to Peak Flood** (03 Dec 2023 22:00 UTC). Show the KPIs and the **rainfall / overflow chart** in the Flood tab.
-5. **Hydraulics:** potential bottleneck **C169**, then **View on map**. The inspector explains which SWMM criteria were met.
+4. **Timeline:** press ▶ to play, then **Go to Peak Flood** (03 Dec 2023 22:00 UTC). The heads-up display over the map shows the simulated time and rainfall intensity, and the rainfall visualisation over the scene follows it. Show the KPIs and the **rainfall / overflow chart** in the Flood tab.
+5. **Hydraulics:** potential bottleneck **C169**, then **View on map**: the conduit is highlighted between its junctions J161 and J177, and the inspector explains which SWMM criteria were met.
 6. **Exposure:** buildings in influence zones (783 at the peak).
 7. **Actions:** the evidence-based recommendations.
 8. **Scenarios:** switch to **1.25×** and load or run it. Then open the **Compare** tab: scenario overview chart (1.00× / 1.25× / 1.50×), new and persisting bottlenecks, and the comparison map layer.

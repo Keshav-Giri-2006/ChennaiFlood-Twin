@@ -80,3 +80,26 @@ The machine was also running the Docker Desktop VM, so the environment ceiling w
 - **3D Tiles are still not needed.**
 - **Production bundle:** 4.52 MB JS (1.23 MB gzip), nginx-served with gzip and immutable asset caching in Docker.
 - **Presentation machine:** measure there with `await window.__digitalTwin.profileFrames(6000)` in the dev build (see *Reproducing* above). Close Docker Desktop if Option A is used, since its VM competes for CPU/GPU.
+
+## Prompt 6 re-check (2026-09-19) — visual enhancement pass
+
+Same headless-Edge profiler, dev app, peak flood timestamp, all layers on. The machine was also running the
+backend, the Vite dev server and previous browser instances, so absolute values are lower and noisier than
+the Prompt 4 figures; the comparison within the session is what matters.
+
+| Configuration | fps | p50 frame (ms) | p95 frame (ms) |
+|---|---|---|---|
+| All layers + rainfall overlay | 15.5 | 64.1 | 111.6 |
+| All layers, rainfall overlay off | 16.2 | 60.6 | 110.4 |
+| All layers + rainfall overlay (repeat) | 15.3 | 64.3 | 73.0 |
+| Rainfall on, drainage-node layer off | 15.8 | 62.8 | 70.0 |
+| Timeline playback 1x + rainfall + nodes | 15.5 | 63.3 | 78.1 |
+
+- **Rainfall overlay cost:** ≈ 0.5–0.9 fps, within the run-to-run noise of this machine. It is three CSS layers
+  animated by the compositor (transform only), not Cesium geometry, and it is removed from the DOM at 0 mm/hr.
+- **Drainage-node layer (228 point entities):** no measurable cost.
+- **Node pulse and flood fade** use Cesium `CallbackProperty` on at most ~40 flood entities and reuse a scratch
+  `Color`, so they add no per-frame allocations of note.
+- **A GPU post-process shader was tried first and abandoned:** it was harder to verify (it rendered, but the
+  streaks were barely visible against the bright basemap and the debugging cost was high), and the CSS overlay
+  gives the same screen-space result with simpler disposal. Not a performance decision.

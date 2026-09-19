@@ -107,3 +107,22 @@
   - peak overflow 5.425 vs 5.435 m³/s;
   - one extra LOW potential bottleneck, C159, from a single transient flow spike.
 - Differences are documented rather than tuned; the verified Windows result remains the demonstration reference.
+
+## 2026-09-19 — Prompt 6: Digital Twin visual enhancement pass
+
+**What changed** (frontend only; no backend, API, model, data or method change)
+- **Rainfall visualisation:** screen-space overlay (three GPU-composited CSS layers) whose density and fall speed follow the simulated rainfall intensity of the displayed run at the selected timestamp; nothing is drawn at 0 mm/hr; toggled by the new "Rainfall visualisation" layer. Display mapping and classes in `cesium/rainfall.ts` (presentation only).
+- **Simulated-time / rainfall HUD** over the 3D scene: large UTC simulated date and time plus the current rainfall intensity and display class of the displayed run.
+- **Node states:** new "Drainage nodes (SWMM)" layer (all 228 model nodes, small and muted) as the "normal" baseline; surcharged and overflowing nodes are larger and brighter, overflowing ones scaled by the backend overflow class with a subtle pulse. Sizes cannot overlap between states.
+- **Flood transitions:** 320 ms fade-in per time slice (visual only; no interpolation between SWMM reporting timesteps).
+- **Potential-bottleneck emphasis:** selecting a bottleneck draws a pulsing glow along the backend conduit geometry with labelled rings at its two junctions (J161 — C169 — J177); generic for any bottleneck.
+- **Restored** `simulation/ward176_hydraulic_reconstructed_candidate.rpt`, which had been overwritten outside the repository workflow on 2026-09-16 (identical hydraulics, new SWMM run timestamps). Its SHA-256 is pinned by `backend/config/demo.json`, so the verified demo result would otherwise have failed with `503 RESULT_NOT_FOUND`.
+
+**Scientific integrity**
+- Every effect is driven by a value the backend already returns; no flood depth, velocity, pipe flow animation or weather is invented.
+- Terminology unchanged: flood zones remain "not water depth or observed extent"; the rain effect is a "rainfall visualisation", never a simulated raindrop or atmospheric model.
+- SWMM model, rainfall, DEM, GIS data, flood processing, bottleneck, exposure, recommendation and scenario methods: unchanged (all versions unchanged).
+
+**Verification**
+- Headless-browser walk-through (dev and Docker): demo load, playback, peak, C169 emphasis, 1.25× and 1.50× stored runs, reset, refresh — 0 console errors. Rainfall at the peak timestamp follows the run: 15.03 / 18.79 / 22.55 mm/hr for 1.00× / 1.25× / 1.50×.
+- Frame rate with all layers at the peak: 15.5 fps with the rain overlay vs 16.2 fps without (same session, loaded machine) — no material regression.
