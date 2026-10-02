@@ -48,6 +48,17 @@ def _transformer(source: str) -> Transformer:
     return Transformer.from_crs(source, "EPSG:4326", always_xy=True)
 
 
+@lru_cache(maxsize=4)
+def _from_lonlat_transformer(target: str) -> Transformer:
+    return Transformer.from_crs("EPSG:4326", target, always_xy=True)
+
+
+def lonlat_to(target: str, lon: float, lat: float) -> tuple[float, float]:
+    """Project one WGS 84 lon/lat position into ``target`` (e.g. EPSG:32644 for metric calculations)."""
+    x, y = _from_lonlat_transformer(target).transform(lon, lat)
+    return float(x), float(y)
+
+
 def transform_xy(source: str, xs: list[float], ys: list[float]) -> tuple[list[float], list[float]]:
     if source == CRS84:
         return xs, ys

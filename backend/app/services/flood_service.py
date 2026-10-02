@@ -149,6 +149,10 @@ class FloodService:
             raise AppError(ErrorCode.PROCESSING_FAILED, "Flood products could not be generated for this simulation.", status_code=500, details={"reason": str(exc)}, simulation_id=record.simulation_id) from exc
         return record, manifest
 
+    def products(self, simulation_id: str) -> tuple[Any, dict[str, Any]]:
+        """Completed simulation record and its valid flood-product manifest (generated when missing)."""
+        return self._manifest(simulation_id)
+
     def _timeline(self, record: Any) -> dict[str, Any]:
         sid = record.simulation_id
         if sid not in self._timeline_cache:

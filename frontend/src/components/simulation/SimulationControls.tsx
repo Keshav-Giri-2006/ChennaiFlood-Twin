@@ -6,18 +6,9 @@ import { useFloodStore } from '../../state/floodStore'
 import { useSimulationStore } from '../../state/simulationStore'
 import type { SimulationStatus } from '../../types/api'
 import { formatTimestampUtc } from '../../utils/format'
-import { multiplierLabel, resultSourceLabel } from '../../utils/resultLabels'
+import { STAGE_LABELS, multiplierLabel, resultSourceLabel } from '../../utils/resultLabels'
 import { Panel } from '../common/Panel'
 import { StatusBadge } from '../common/StatusBadge'
-
-const STAGE_LABELS: Record<string, string> = {
-  QUEUED: 'Queued',
-  VALIDATION: 'Validating model and rainfall',
-  WORKSPACE_PREPARATION: 'Preparing isolated workspace',
-  SWMM_EXECUTION: 'Running EPA SWMM',
-  RESULT_PROCESSING: 'Processing results, flood and decision-support products',
-  COMPLETE: 'Complete',
-}
 
 export function SimulationControls() {
   const client = useQueryClient()

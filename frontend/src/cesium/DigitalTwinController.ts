@@ -3,6 +3,7 @@ import {
   CallbackProperty,
   Cartesian2,
   Cartesian3,
+  Cartographic,
   Color,
   ArcType,
   ColorMaterialProperty,
@@ -28,8 +29,8 @@ import {
 import type { BottleneckFeatureProperties, BottleneckSeverity, ExposureAssetType, NodeSplit } from '../types/api'
 import type { FeatureCollection, FloodFeatureProperties, Geometry, TerrainGrid } from '../types/gis'
 import type { LayerKey, LayerLoadState, SelectedFeature } from '../state/viewerStore'
-import { bboxOf, lineParts, linePartsAt, polygonHierarchies, polygonHierarchiesAt } from './geometry'
-import { BOTTLENECK_COLORS, BOTTLENECK_INACTIVE_COLOR, BOTTLENECK_WIDTH, BUILDING_VISUAL_EXTRUSION_M, COMPARISON_COLORS, EXPOSURE_COLORS, LAYER_COLORS, NODE_MARKER, floodColor, floodCss } from './styles'
+import { bboxOf, lineParts, linePartsAt, pointInGeometry, polygonHierarchies, polygonHierarchiesAt } from './geometry'
+import { BOTTLENECK_COLORS, BOTTLENECK_INACTIVE_COLOR, BOTTLENECK_WIDTH, BUILDING_VISUAL_EXTRUSION_M, COMPARISON_COLORS, EXPOSURE_COLORS, LAYER_COLORS, LOCATION_COLORS, NODE_MARKER, floodColor, floodCss } from './styles'
 import { createDemTerrainProvider, sampleDem } from './terrain'
 
 type StaticLayer = 'boundary' | 'buildings' | 'roads' | 'drains' | 'subcatchments'
@@ -53,6 +54,20 @@ export interface ControllerCallbacks {
   onSelect: (feature: SelectedFeature | null) => void
   /** Called when Cesium stops rendering because of an error (null when rendering resumes). */
   onRenderError: (message: string | null) => void
+  /** Called with the clicked ground position while location-picking mode is on (Location Flood Check). */
+  onLocationPick?: (pick: LocationPick) => void
+}
+
+/** A clicked ground position in WGS 84 degrees. `insideStudyArea` is null until the ward boundary has loaded. */
+export interface LocationPick {
+  longitude: number
+  latitude: number
+  insideStudyArea: boolean | null
+}
+
+/** Pin shown for the Location Flood Check, with the radius of the evaluated surrounding area. */
+export interface LocationPin extends LocationPick {
+  radiusMeters: number
 }
 
 /** A flooding node connected to a potential bottleneck (location from the backend evidence record). */
@@ -110,6 +125,11 @@ export class DigitalTwinController {
   /** Emphasis overlay for the potential bottleneck currently being explained (visual only). */
   private readonly emphasisSource = new CustomDataSource('emphasis')
   private emphasisedLinkId: string | null = null
+  /** The single Location Flood Check pin and its surrounding-area disc (at most one of each). */
+  private readonly locationSource = new CustomDataSource('location')
+  /** While on, map clicks pick a location instead of selecting features (same single click handler). */
+  private locationMode = false
+  private wardGeometries: Geometry[] = []
   private modelNodesLoaded = false
   /** Start of the current flood slice fade-in (performance clock, ms); visual transition only. */
   private floodFadeStart = 0
@@ -181,6 +201,7 @@ export class DigitalTwinController {
     this.viewer.dataSources.add(this.focusSource)
     this.viewer.dataSources.add(this.emphasisSource)
     this.viewer.dataSources.add(this.comparisonSource)
+    this.viewer.dataSources.add(this.locationSource)
     this.comparisonSource.show = false
     this.bottleneckSource.show = false
     this.handler = new ScreenSpaceEventHandler(this.viewer.scene.canvas)
@@ -230,7 +251,10 @@ export class DigitalTwinController {
       this.layers.set(key, source)
       this.stats.staticLayerLoads += 1
       if (key === 'buildings' || key === 'roads') this.refreshAssetMaterials(key)
-      if (key === 'boundary') this.wardBbox = (fc.metadata?.bbox as [number, number, number, number] | undefined) ?? bboxOf(fc.features)
+      if (key === 'boundary') {
+        this.wardBbox = (fc.metadata?.bbox as [number, number, number, number] | undefined) ?? bboxOf(fc.features)
+        this.wardGeometries = fc.features.map((f) => f.geometry)
+      }
       this.callbacks.onLayerState(key, { state: 'ready', featureCount: fc.features.length, loadMs: Math.round(performance.now() - started) })
       this.render()
     } catch (error) {
@@ -863,8 +887,79 @@ export class DigitalTwinController {
     this.fitWard(0.8)
   }
 
+  // ---- location flood check --------------------------------------------------------------------
+  /** Switch map clicks between feature selection (default) and picking a location for the Location Flood Check. */
+  setLocationMode(active: boolean): void {
+    if (this.destroyed || this.locationMode === active) return
+    this.locationMode = active
+    this.viewer.scene.canvas.style.cursor = active ? 'crosshair' : ''
+  }
+
+  get isLocationMode(): boolean {
+    return this.locationMode
+  }
+
+  /** Show, move or remove the single location pin. Never adds a second pin; the camera does not move. */
+  setLocationPin(pin: LocationPin | null): void {
+    if (this.destroyed) return
+    // Fresh entities without fixed ids: re-adding a removed id while events are suspended is reported as a
+    // "changed" entity, and Cesium's point/label visualizers would keep drawing the old pin.
+    const entities = this.locationSource.entities
+    entities.suspendEvents()
+    entities.removeAll()
+    if (pin) {
+      const position = Cartesian3.fromDegrees(pin.longitude, pin.latitude)
+      const inside = pin.insideStudyArea !== false
+      const color = Color.fromCssColorString(inside ? LOCATION_COLORS.pin : LOCATION_COLORS.outside)
+      if (inside) {
+        // Visual outline of the evaluated surrounding area; the analysis itself is done by the backend in EPSG:32644.
+        entities.add({
+          position,
+          ellipse: { semiMajorAxis: pin.radiusMeters, semiMinorAxis: pin.radiusMeters, heightReference: HeightReference.CLAMP_TO_GROUND, material: Color.fromCssColorString(LOCATION_COLORS.area).withAlpha(0.14) },
+        })
+      }
+      entities.add({
+        position,
+        point: { pixelSize: 16, color, outlineColor: Color.WHITE, outlineWidth: 3, heightReference: HeightReference.CLAMP_TO_GROUND, disableDepthTestDistance: Number.POSITIVE_INFINITY },
+        label: {
+          text: inside ? 'Selected location' : 'Outside Ward 176',
+          font: '600 13px system-ui, sans-serif',
+          fillColor: Color.WHITE,
+          outlineColor: Color.BLACK,
+          outlineWidth: 3,
+          style: LabelStyle.FILL_AND_OUTLINE,
+          verticalOrigin: VerticalOrigin.BOTTOM,
+          pixelOffset: new Cartesian2(0, -16),
+          heightReference: HeightReference.CLAMP_TO_GROUND,
+          disableDepthTestDistance: Number.POSITIVE_INFINITY,
+        },
+      })
+    }
+    entities.resumeEvents()
+    this.render()
+  }
+
+  /** Ground position under the cursor (terrain first, ellipsoid as fallback); null when the sky is clicked. */
+  private groundPosition(position: { x: number; y: number }): LocationPick | null {
+    const screen = new Cartesian2(position.x, position.y)
+    const ray = this.viewer.camera.getPickRay(screen)
+    const cartesian = (ray ? this.viewer.scene.globe.pick(ray, this.viewer.scene) : undefined) ?? this.viewer.camera.pickEllipsoid(screen)
+    if (!cartesian) return null
+    const cartographic = Cartographic.fromCartesian(cartesian)
+    if (!cartographic) return null
+    const longitude = CesiumMath.toDegrees(cartographic.longitude)
+    const latitude = CesiumMath.toDegrees(cartographic.latitude)
+    const insideStudyArea = this.wardGeometries.length ? this.wardGeometries.some((g) => pointInGeometry(longitude, latitude, g)) : null
+    return { longitude, latitude, insideStudyArea }
+  }
+
   // ---- selection -------------------------------------------------------------------------------
   private pick(position: { x: number; y: number }): void {
+    if (this.locationMode) {
+      const picked = this.groundPosition(position)
+      if (picked) this.callbacks.onLocationPick?.(picked)
+      return
+    }
     // Ground-draped polygons (roads, zones) are picked above ground polylines, so drill through the
     // stack and prefer the more specific feature: bottleneck > drain > flood node > everything else.
     const refs = this.viewer.scene

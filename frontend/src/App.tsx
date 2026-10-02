@@ -3,6 +3,7 @@ import { DashboardTabs } from './components/dashboard/DashboardTabs'
 import { KpiPanel } from './components/dashboard/KpiPanel'
 import { DecisionLayerSync } from './components/decision/DecisionLayerSync'
 import { FloodLayerSync } from './components/flood/FloodLayerSync'
+import { LocationLayerSync } from './components/location/LocationLayerSync'
 import { AssetInspector } from './components/inspector/AssetInspector'
 import { Header } from './components/layout/Header'
 import { MethodologyDialog } from './components/methodology/MethodologyDialog'
@@ -64,6 +65,9 @@ export default function App() {
         </ErrorBoundary>
         <ErrorBoundary label="Decision layers">
           <DecisionLayerSync />
+        </ErrorBoundary>
+        <ErrorBoundary label="Location pin">
+          <LocationLayerSync />
         </ErrorBoundary>
       </DigitalTwinViewer>
       <MethodologyDialog />

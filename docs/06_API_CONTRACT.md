@@ -2074,3 +2074,30 @@ Errors: same ID, different model/scenario/processing or method versions, differe
 ## 84.5 Transport
 
 Responses ≥ 2 KB are gzip-compressed when the client accepts it (e.g. bottleneck timeline 325 KB, comparison 48.5 KB → 5.6 KB).
+
+---
+
+# 85. Implementation Addendum — Location Flood Check (2026-09-22)
+
+Location-specific historical flood analysis using the model-derived response around a user-selected point (location-check-v1, `docs/LOCATION_CHECK_METHOD.md`). A spatial query over one completed simulation; it never starts SWMM.
+
+```text
+POST /simulations/{simulationId}/location-check
+{"latitude": 12.9712, "longitude": 80.2185, "radiusMeters": 250}
+```
+
+| Field | Type | Rule |
+|---|---|---|
+| `latitude` | number | WGS 84, −90…90, finite |
+| `longitude` | number | WGS 84, −180…180, finite |
+| `radiusMeters` | number | optional, default 250, 50…1000 (evaluated in EPSG:32644) |
+
+Unknown fields are rejected.
+
+**Response:** `simulationId, scenarioId, modelVersion, rainfallMultiplier, locationCheckVersion, floodProcessingVersion, dataType ("model-derived"), terminology, location{latitude, longitude, withinStudyArea, crs, processingCrs, eastingM, northingM}, radiusMeters, response{code, description}, nearestNode{nodeId, nodeType, location, distanceM, withinRadius, zoneOverlapM2, zoneOverlapShare, isNearest, zoneContainsLocation, response}, surroundingArea{circleAreaM2, areaWithinStudyAreaM2, shareWithinStudyArea, associatedNodeCount, overflowingNodeCount, surchargeOnlyNodeCount, noReportedStressNodeCount, outfallNodeCount, areaAssociatedWithOverflowM2, shareAssociatedWithOverflow, firstOverflowTime, lastOverflowTime, overflowDurationHours, peak{time, index, combinedOverflowRateCms, overflowingNodeCount, overflowingNodeIds, areaAssociatedWithOverflowM2, shareAssociatedWithOverflow} | null}, nodes[], potentialBottlenecks[] | null, intervalMinutes, groundFloodDepthM (always null), floodExtentAvailable (false), notDerived, timeConvention, method, limitations[]`.
+
+Node `response`: `condition` (`OVERFLOW` | `SURCHARGE_ONLY` | `NO_REPORTED_STRESS` | `OUTFALL`), `description`, `overflowPeriods, overflowHours, surchargePeriods, surchargeHours, peakOverflowRateCms, peakOverflowTime, firstOverflowTime, lastOverflowTime, highestOverflowClass, approxCumulativeOverflowM3, maxNodeWaterDepthM, maxFillRatio` (outfalls carry only `condition` and `description`). `response.code`: `OVERFLOW_AT_NEAREST_NODE` | `OVERFLOW_IN_SURROUNDING_AREA` | `SURCHARGE_ONLY` | `NO_REPORTED_STRESS`.
+
+`potentialBottlenecks` is `null` when decision-support products are unavailable (the flood response is still returned).
+
+**Errors:** invalid body → `422 INVALID_REQUEST`; outside Ward 176 → `422 LOCATION_OUTSIDE_STUDY_AREA` (details: latitude, longitude); unknown or malformed simulation ID → `404 SIMULATION_NOT_FOUND`; not completed or failed → `409 SIMULATION_NOT_COMPLETED` (details: status). No filesystem paths are returned.

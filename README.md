@@ -171,6 +171,7 @@ Details are in [`docs/DOCKER_DEPLOYMENT.md`](docs/DOCKER_DEPLOYMENT.md).
 5. **Hydraulics:** potential bottleneck **C169**, then **View on map**: the conduit is highlighted between its junctions J161 and J177, and the inspector explains which SWMM criteria were met.
 6. **Exposure:** buildings in influence zones (783 at the peak).
 7. **Actions:** the evidence-based recommendations.
+7a. **Location:** open the *Location* tab, click a point in Ward 176 and press **Run Location Flood Check** (or **Check displayed result**). The panel shows the model-derived flood response around the pin: nearest drainage node, surrounding 250 m, peak time and nearby potential bottlenecks. It is not a property assessment.
 8. **Scenarios:** switch to **1.25×** and load or run it. Then open the **Compare** tab: scenario overview chart (1.00× / 1.25× / 1.50×), new and persisting bottlenecks, and the comparison map layer.
 9. **Methodology & Limitations:** it includes a *Presenter questions* section (for example "What exactly are the shaded flood polygons?").
 10. **Reset demo.**
@@ -225,6 +226,7 @@ npm run build
 - [`docs/FLOOD_PROCESSING_METHOD.md`](docs/FLOOD_PROCESSING_METHOD.md): node flooding states and influence zones.
 - [`docs/DECISION_SUPPORT_METHOD.md`](docs/DECISION_SUPPORT_METHOD.md): potential bottlenecks, exposure, recommendations, time-varying bottlenecks.
 - [`docs/SCENARIO_ANALYSIS_METHOD.md`](docs/SCENARIO_ANALYSIS_METHOD.md): rainfall multiplier and comparison.
+- [`docs/LOCATION_CHECK_METHOD.md`](docs/LOCATION_CHECK_METHOD.md): Location Flood Check (model-derived response around a selected point).
 - [`docs/DOCKER_DEPLOYMENT.md`](docs/DOCKER_DEPLOYMENT.md), [`docs/PERFORMANCE_NOTES.md`](docs/PERFORMANCE_NOTES.md), [`docs/06_API_CONTRACT.md`](docs/06_API_CONTRACT.md), [`docs/CHANGELOG.md`](docs/CHANGELOG.md).
 
 Data: GCC GIS · NASA GPM IMERG · Copernicus DEM GLO-30 · © OpenStreetMap contributors. EPA SWMM is public-domain software of the U.S. EPA.

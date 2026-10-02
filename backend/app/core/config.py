@@ -66,6 +66,7 @@ class Settings(BaseSettings):
     decision_support_version: str = Field(default="decision-support-v1", alias="DECISION_SUPPORT_VERSION")
     bottleneck_timeline_version: str = Field(default="bottleneck-timeline-v1", alias="BOTTLENECK_TIMELINE_VERSION")
     scenario_analysis_version: str = Field(default="scenario-analysis-v1", alias="SCENARIO_ANALYSIS_VERSION")
+    location_check_version: str = Field(default="location-check-v1", alias="LOCATION_CHECK_VERSION")
 
     # --- API ----------------------------------------------------------------
     # NoDecode: the environment value is a comma-separated list (or a JSON list), parsed by the validator below.

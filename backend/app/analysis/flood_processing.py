@@ -107,19 +107,34 @@ def _influence_zones(node_ids: list[str], mapping_: NetworkMapping, ward: BaseGe
 influence_zones = _influence_zones  # public name used by exposure-analysis-v1 (same zones as the flood products)
 
 
-def generate_flood_products(
-    *,
-    simulation_id: str,
-    scenario_id: str,
-    model_version: str,
-    flood_processing_version: str,
-    output: SwmmOutput,
-    report: SwmmReport,
-    inp: InpModel,
-    network: NetworkMapping,
-    ward_utm: BaseGeometry,
-    generated_at: datetime,
-) -> FloodProducts:
+@dataclass
+class NodeStates:
+    """Junction states at every SWMM reporting timestamp, as defined by flood-processing-v1.
+
+    Arrays are (reporting periods x junctions). Shared by the flood products and
+    location-check-v1 so both use exactly the same state definitions.
+    """
+
+    times: list[datetime]
+    junction_ids: list[str]
+    depth: np.ndarray
+    head: np.ndarray
+    flooding: np.ndarray
+    is_flooding: np.ndarray
+    is_surcharged: np.ndarray
+    cumulative: np.ndarray
+    effective_full: np.ndarray
+    p50: float
+    p90: float
+    event_max_rate: float
+
+    def overflow_class(self, rate: float) -> str:
+        if rate <= self.p50:
+            return "LOW"
+        return "MODERATE" if rate <= self.p90 else "HIGH"
+
+
+def compute_node_states(output: SwmmOutput, inp: InpModel) -> NodeStates:
     node_ids = output.node_ids
     if node_ids != inp.node_ids:
         raise FloodProcessingError("Output node IDs differ from the model input")
@@ -129,10 +144,7 @@ def generate_flood_products(
     depth = np.asarray(output.node_series("depth"), dtype=np.float64)[:, j_index]
     head = np.asarray(output.node_series("head"), dtype=np.float64)[:, j_index]
     flooding = np.asarray(output.node_series("flooding"), dtype=np.float64)[:, j_index]
-    rainfall = output.system_series("rainfall")
-    system_flooding = output.system_series("flooding")
     times = output.times
-    n_periods = len(times)
 
     crowns = node_crown_heights(inp)
     crown = np.array([crowns.get(n, 0.0) for n in junction_ids])
@@ -150,16 +162,54 @@ def generate_flood_products(
     else:
         p50 = p90 = event_max_rate = 0.0
 
-    def overflow_class(rate: float) -> str:
-        if rate <= p50:
-            return "LOW"
-        return "MODERATE" if rate <= p90 else "HIGH"
-
     # Trapezoidal cumulative overflow volume (m3); flooding is zero at simulation start.
     sim_start = inp.simulation_start()
     dt = np.array([(times[0] - sim_start).total_seconds()] + [(b - a).total_seconds() for a, b in zip(times, times[1:])])
     previous = np.vstack([np.zeros(len(junction_ids)), flooding[:-1]])
     cumulative = np.cumsum((previous + flooding) / 2.0 * dt[:, None], axis=0)
+
+    return NodeStates(
+        times=list(times),
+        junction_ids=junction_ids,
+        depth=depth,
+        head=head,
+        flooding=flooding,
+        is_flooding=is_flooding,
+        is_surcharged=is_surcharged,
+        cumulative=cumulative,
+        effective_full=effective_full,
+        p50=p50,
+        p90=p90,
+        event_max_rate=event_max_rate,
+    )
+
+
+def generate_flood_products(
+    *,
+    simulation_id: str,
+    scenario_id: str,
+    model_version: str,
+    flood_processing_version: str,
+    output: SwmmOutput,
+    report: SwmmReport,
+    inp: InpModel,
+    network: NetworkMapping,
+    ward_utm: BaseGeometry,
+    generated_at: datetime,
+) -> FloodProducts:
+    node_ids = output.node_ids
+    states = compute_node_states(output, inp)
+    junction_ids = states.junction_ids
+    depth, head, flooding = states.depth, states.head, states.flooding
+    is_flooding, is_surcharged, cumulative = states.is_flooding, states.is_surcharged, states.cumulative
+    effective_full = states.effective_full
+    p50, p90, event_max_rate = states.p50, states.p90, states.event_max_rate
+    overflow_class = states.overflow_class
+    nonzero = flooding[is_flooding]
+    rainfall = output.system_series("rainfall")
+    system_flooding = output.system_series("flooding")
+    times = output.times
+    n_periods = len(times)
 
     # Spatial association.
     zones_utm = _influence_zones(node_ids, network, ward_utm)
@@ -408,4 +458,4 @@ def parse_time_query(value: str) -> datetime:
     return parsed
 
 
-__all__ = ["generate_flood_products", "timestamp_key", "parse_time_query", "FloodProcessingError", "FloodProducts", "node_crown_heights"]
+__all__ = ["generate_flood_products", "compute_node_states", "NodeStates", "timestamp_key", "parse_time_query", "FloodProcessingError", "FloodProducts", "node_crown_heights"]

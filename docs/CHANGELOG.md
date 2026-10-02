@@ -126,3 +126,20 @@
 **Verification**
 - Headless-browser walk-through (dev and Docker): demo load, playback, peak, C169 emphasis, 1.25× and 1.50× stored runs, reset, refresh — 0 console errors. Rainfall at the peak timestamp follows the run: 15.03 / 18.79 / 22.55 mm/hr for 1.00× / 1.25× / 1.50×.
 - Frame rate with all layers at the peak: 15.5 fps with the rain overlay vs 16.2 fps without (same session, loaded machine) — no material regression.
+
+## 2026-09-22 — Location Flood Check (location-check-v1)
+
+**What changed**
+- **Feature:** location-specific historical flood analysis using the model-derived response around a user-selected point. New *Location* tab: while it is open, a map click places a single pin (clicking again moves it). **Run Location Flood Check** runs the existing SWMM simulation of the selected scenario through the normal pipeline, then evaluates the pin. **Check displayed result (no re-run)** evaluates an already-completed result. Moving the pin re-queries the same simulation without re-running SWMM.
+- **API:** `POST /api/v1/simulations/{simulationId}/location-check` (`06_API_CONTRACT.md` §85; method in `LOCATION_CHECK_METHOD.md`). New setting `LOCATION_CHECK_VERSION` (default `location-check-v1`) and error code `LOCATION_OUTSIDE_STUDY_AREA`.
+- **Refactor, no behaviour change:** the flood-processing-v1 per-node state computation was moved into `compute_node_states()` so the flood products and the location check use one code path. All flood products are byte-identical before and after (manifest, timeline, zones, 190 time slices and diagnostics hashed).
+- **Frontend:** `LocationPanel`, `LocationLayerSync` and `state/locationStore.ts`. The controller gains `setLocationMode`/`setLocationPin`. The existing single click handler branches on the mode, and no new Cesium handler is added. There is a pin legend entry, and Reset demo clears the pin.
+- **Restored** `simulation/ward176_hydraulic_reconstructed_candidate.rpt` and `.out`. Both had been deleted from the working tree outside the repository workflow. They were restored from git with checksums matching `backend/config/demo.json`.
+
+**Scientific integrity**
+- No new data, model, SWMM run type or method change. The location check reads the flood-processing-v1 states and influence zones of the chosen simulation.
+- Ground flood depth and flood extent remain not derived (`groundFloodDepthM: null`), and in-network node depth is labelled as such. The UI never says "safe", "flood-proof" or "this plot will flood". A quiet result states that it does not show the location cannot flood.
+
+**Verification**
+- Backend 160 passed (17 new, including cross-checks against the flood product files and a location check on a real SWMM 5.2.4 run). Frontend 77 passed (18 new, including controller tests with the real Cesium library for single-handler behaviour and pin replacement).
+- Browser end to end (dev, real SWMM run): pin by mouse click → Run Location Flood Check → VALIDATING/RUNNING/PROCESSING → result. The run reproduces the baseline (197,876,000 L). The pin moves without a re-run, an outside-ward click is rejected (UI and backend agree), feature selection still works on other tabs, and Reset demo clears the pin.

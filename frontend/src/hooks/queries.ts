@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { comparisonsApi, decisionApi, demoApi, floodApi, gisApi, healthApi, scenariosApi, simulationsApi } from '../api/endpoints'
+import { comparisonsApi, decisionApi, demoApi, floodApi, gisApi, healthApi, locationApi, scenariosApi, simulationsApi } from '../api/endpoints'
 import type { ExposureAssetType, FloodTimelineEntry, SimulationStatusValue } from '../types/api'
 
 const TERMINAL: SimulationStatusValue[] = ['COMPLETED', 'FAILED']
@@ -22,6 +22,7 @@ export const queryKeys = {
   exposureAssets: (id: string, type: ExposureAssetType, time: string | null) => ['decision', id, 'exposure-assets', type, time ?? 'event'] as const,
   recommendations: (id: string) => ['decision', id, 'recommendations'] as const,
   modelLayer: (kind: 'conduits' | 'nodes') => ['gis', 'model', kind] as const,
+  locationCheck: (id: string, lat: number, lon: number, radius: number) => ['location', id, lat.toFixed(7), lon.toFixed(7), radius] as const,
 }
 
 /** Completed-simulation products are immutable: cache them for the session. */
@@ -218,6 +219,24 @@ export function useFloodZones(simulationId: string | null, enabled: boolean) {
     queryKey: ['flood', simulationId ?? '', 'zones'],
     queryFn: ({ signal }) => floodApi.zones(simulationId as string, signal),
     enabled: Boolean(simulationId) && enabled,
+    ...IMMUTABLE,
+  })
+}
+
+/** Radius of the surrounding area evaluated by the Location Flood Check (metres; backend default). */
+export const LOCATION_RADIUS_M = 250
+
+/**
+ * Model-derived flood response around a location for one completed simulation. Results of a completed
+ * simulation are immutable, so each (simulation, location) pair is cached; moving the pin issues a new query
+ * against the same simulation without re-running SWMM.
+ */
+export function useLocationCheck(simulationId: string | null, location: { latitude: number; longitude: number } | null, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.locationCheck(simulationId ?? '', location?.latitude ?? 0, location?.longitude ?? 0, LOCATION_RADIUS_M),
+    queryFn: ({ signal }) => locationApi.check(simulationId as string, { latitude: (location as { latitude: number }).latitude, longitude: (location as { longitude: number }).longitude, radiusMeters: LOCATION_RADIUS_M }, signal),
+    enabled: Boolean(simulationId && location) && enabled,
+    retry: false,
     ...IMMUTABLE,
   })
 }

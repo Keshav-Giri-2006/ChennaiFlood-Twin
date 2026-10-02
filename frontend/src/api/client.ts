@@ -115,6 +115,7 @@ const FRIENDLY_MESSAGES: Record<string, string> = {
   SWMM_UNAVAILABLE: 'The SWMM simulation engine is not available on the server.',
   SIMULATION_NOT_COMPLETED: 'Results are available once the simulation has completed.',
   SIMULATION_INTERRUPTED: 'The simulation was interrupted because the backend restarted.',
+  LOCATION_OUTSIDE_STUDY_AREA: 'The selected location is outside Ward 176. The hydraulic model covers Ward 176 only; select a point inside the ward boundary.',
 }
 
 /** Concise user-facing message; never exposes stack traces or raw technical details. */

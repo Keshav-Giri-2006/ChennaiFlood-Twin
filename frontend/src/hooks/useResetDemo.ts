@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback } from 'react'
 import { useDigitalTwin } from '../components/viewer/controllerContext'
 import { useFloodStore } from '../state/floodStore'
+import { useLocationStore } from '../state/locationStore'
 import { useSimulationStore } from '../state/simulationStore'
 import { useViewerStore } from '../state/viewerStore'
 import type { DemoResult, SimulationStatus } from '../types/api'
@@ -9,7 +10,7 @@ import { queryKeys } from './queries'
 
 /**
  * Returns the UI to a known demo state: default camera and layers, no selection or temporary
- * highlights, baseline scenario selection, normal opacity and the first timestamp. The displayed result
+ * highlights or location pin, baseline scenario selection, normal opacity and the first timestamp. The displayed result
  * returns to the verified precomputed demonstration result when it has been loaded, otherwise to the latest
  * completed 1.00x baseline. Nothing on the backend (results, runs, data) is deleted.
  */
@@ -22,6 +23,7 @@ export function useResetDemo(): () => void {
     flood.setSpeed(1)
     if (flood.simulationId) flood.selectTimestamp(flood.simulationId, 0)
     useViewerStore.getState().reset()
+    useLocationStore.getState().reset()
     const sim = useSimulationStore.getState()
     sim.setRainfallMultiplier(1)
     sim.setComparison(null, null)

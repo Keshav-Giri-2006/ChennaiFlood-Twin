@@ -556,3 +556,85 @@ export interface Comparison {
   statements: string[]
   limitations: string[]
 }
+
+// ---- Location Flood Check (location-check-v1) ------------------------------------------------------
+export type LocationNodeCondition = 'OVERFLOW' | 'SURCHARGE_ONLY' | 'NO_REPORTED_STRESS' | 'OUTFALL'
+export type LocationResponseCode = 'OVERFLOW_AT_NEAREST_NODE' | 'OVERFLOW_IN_SURROUNDING_AREA' | 'SURCHARGE_ONLY' | 'NO_REPORTED_STRESS'
+
+export interface LocationNodeResponse {
+  condition: LocationNodeCondition
+  description: string
+  overflowPeriods?: number
+  overflowHours?: number
+  surchargePeriods?: number
+  surchargeHours?: number
+  peakOverflowRateCms?: number | null
+  peakOverflowTime?: string | null
+  firstOverflowTime?: string | null
+  lastOverflowTime?: string | null
+  highestOverflowClass?: 'LOW' | 'MODERATE' | 'HIGH' | null
+  approxCumulativeOverflowM3?: number | null
+  /** In-network SWMM node water depth; not a ground flood depth. */
+  maxNodeWaterDepthM?: number
+  maxFillRatio?: number | null
+}
+
+export interface LocationNode {
+  nodeId: string
+  nodeType: 'JUNCTION' | 'OUTFALL'
+  location: [number, number]
+  distanceM: number
+  withinRadius: boolean
+  zoneOverlapM2: number
+  zoneOverlapShare: number
+  isNearest: boolean
+  response: LocationNodeResponse
+}
+
+export interface LocationCheck {
+  simulationId: string
+  scenarioId: string
+  modelVersion: string
+  rainfallMultiplier: number
+  locationCheckVersion: string
+  floodProcessingVersion: string
+  dataType: 'model-derived'
+  terminology: string
+  location: { latitude: number; longitude: number; withinStudyArea: boolean; crs: string; processingCrs: string; eastingM: number; northingM: number }
+  radiusMeters: number
+  response: { code: LocationResponseCode; description: string }
+  nearestNode: LocationNode & { zoneContainsLocation: boolean }
+  surroundingArea: {
+    circleAreaM2: number
+    areaWithinStudyAreaM2: number
+    shareWithinStudyArea: number
+    associatedNodeCount: number
+    overflowingNodeCount: number
+    surchargeOnlyNodeCount: number
+    noReportedStressNodeCount: number
+    outfallNodeCount: number
+    areaAssociatedWithOverflowM2: number
+    shareAssociatedWithOverflow: number
+    firstOverflowTime: string | null
+    lastOverflowTime: string | null
+    overflowDurationHours: number
+    peak: {
+      time: string
+      index: number
+      combinedOverflowRateCms: number
+      overflowingNodeCount: number
+      overflowingNodeIds: string[]
+      areaAssociatedWithOverflowM2: number
+      shareAssociatedWithOverflow: number
+    } | null
+  }
+  nodes: LocationNode[]
+  potentialBottlenecks: { linkId: string; sourceObjectId: number | null; severity: BottleneckSeverity | null; confidence: string | null; fromNodeId: string; toNodeId: string; nearestEndNodeDistanceM: number }[] | null
+  intervalMinutes: number
+  groundFloodDepthM: null
+  floodExtentAvailable: false
+  notDerived: Record<string, string>
+  timeConvention: string
+  method: Record<string, string>
+  limitations: string[]
+}

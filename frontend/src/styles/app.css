@@ -297,3 +297,14 @@ details summary { cursor: pointer; color: var(--accent); margin: 4px 0; }
   animation-duration: var(--rain-duration, 1.5s);
 }
 @media (prefers-reduced-motion: reduce) { .rain-layer { animation: none; } }
+
+/* ---- Location Flood Check ---- */
+.location-panel .location-heading { font-size: 14px; margin: 0; display: flex; align-items: center; gap: 6px; }
+.location-selected { border: 1px solid rgba(232, 121, 249, 0.4); border-radius: 6px; padding: 4px 8px 6px; display: flex; flex-direction: column; gap: 2px; }
+.location-prompt { margin: 2px 0; color: #f5d0fe; font-weight: 600; }
+.location-result { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--panel-border); padding-top: 6px; }
+.location-headline { border-left: 3px solid var(--muted); padding: 2px 8px; background: rgba(148, 163, 184, 0.08); border-radius: 0 6px 6px 0; }
+.location-headline p { margin: 2px 0 0; }
+.location-overflow_at_nearest_node, .location-overflow_in_surrounding_area { border-left-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+.location-surcharge_only { border-left-color: #f59e0b; background: rgba(245, 158, 11, 0.08); }
+.location-limitations summary { cursor: pointer; font-size: 12px; color: var(--muted); }

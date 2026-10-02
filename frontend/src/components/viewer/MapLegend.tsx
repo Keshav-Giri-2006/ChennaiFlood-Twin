@@ -1,5 +1,7 @@
-import { BOTTLENECK_COLORS, BOTTLENECK_INACTIVE_COLOR, COMPARISON_COLORS, EXPOSURE_COLORS, FLOOD_CLASS_COLORS, NODE_MARKER, SURCHARGED_COLOR } from '../../cesium/styles'
+import { BOTTLENECK_COLORS, BOTTLENECK_INACTIVE_COLOR, COMPARISON_COLORS, EXPOSURE_COLORS, FLOOD_CLASS_COLORS, LOCATION_COLORS, NODE_MARKER, SURCHARGED_COLOR } from '../../cesium/styles'
+import { LOCATION_RADIUS_M } from '../../hooks/queries'
 import { useActiveTimeline } from '../../hooks/useTimeline'
+import { useLocationStore } from '../../state/locationStore'
 import { useViewerStore } from '../../state/viewerStore'
 
 function Item({ color, label, line, dashed }: { color: string; label: string; line?: boolean; dashed?: boolean }) {
@@ -16,6 +18,7 @@ export function MapLegend() {
   const visibility = useViewerStore((s) => s.visibility)
   const setMethodologyOpen = useViewerStore((s) => s.setMethodologyOpen)
   const { timeline } = useActiveTimeline()
+  const hasLocation = useLocationStore((s) => s.location !== null)
 
   return (
     <details className="layer-controls map-legend" open>
@@ -25,6 +28,7 @@ export function MapLegend() {
         {visibility.drains && <Item color="#22d3ee" line label="Drain in SWMM model" />}
         {visibility.drains && <Item color="#94a3b8" line label="Drain not modelled" />}
         {visibility.nodes && <Item color={NODE_MARKER.normal.color} label="Drainage node, no reported stress" />}
+        {hasLocation && <Item color={LOCATION_COLORS.pin} label={`Selected location · ${LOCATION_RADIUS_M} m surrounding area`} />}
       </ul>
       {visibility.flood && timeline && (
         <>

@@ -57,6 +57,8 @@ npm run build
 - **Node states:** all model nodes are drawn small and muted; SWMM-surcharged nodes are larger and brighter, overflowing nodes largest (scaled by the backend overflow class) with a subtle pulse. The classification itself is backend-only.
 - **Flood slices** fade in over 320 ms. Nothing is interpolated between the 30-minute SWMM reporting timesteps.
 
+- **Location Flood Check:** while the *Location* tab is open, map clicks place one pin (clicking again moves it; other tabs keep normal feature selection). The pin's 250 m disc is only a visual outline: the backend does the analysis in EPSG:32644. Results are the backend's model-derived response around the point; the browser only pre-checks whether the click is inside the ward.
+
 ## Demo flow
 
 Load verified demo result → play the timeline → Go to Peak Flood (Flood tab: rainfall / overflow chart) → Hydraulics (time-aware potential bottlenecks, C169 evidence) → Exposure → Actions → switch to 1.25× (run or load the stored result) → Compare (scenario overview chart 1.00× / 1.25× / 1.50×, changes, comparison layer) → Methodology & Limitations (presenter questions) → Reset demo (returns to the verified demo result).

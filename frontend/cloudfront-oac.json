@@ -1,0 +1,7 @@
+{
+  "Name": "chennaiflood-frontend-oac",
+  "Description": "OAC for ChennaiFlood-Twin frontend S3 bucket",
+  "SigningProtocol": "sigv4",
+  "SigningBehavior": "always",
+  "OriginAccessControlOriginType": "s3"
+}

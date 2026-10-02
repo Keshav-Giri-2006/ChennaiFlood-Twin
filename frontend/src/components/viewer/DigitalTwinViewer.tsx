@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { gisApi } from '../../api/endpoints'
 import { DigitalTwinController } from '../../cesium/DigitalTwinController'
+import { useLocationStore } from '../../state/locationStore'
 import { useViewerStore, type LayerKey } from '../../state/viewerStore'
 import { ControllerContext } from './controllerContext'
 
@@ -21,7 +22,7 @@ export function DigitalTwinViewer({ children, before }: { children?: ReactNode; 
     const instance = new DigitalTwinController(
       container,
       { layer: (name, signal) => gisApi.layer(name, signal), terrain: (signal) => gisApi.terrain(signal) },
-      { onLayerState: setLoadState, onSelect: select, onRenderError: setRenderError },
+      { onLayerState: setLoadState, onSelect: select, onRenderError: setRenderError, onLocationPick: (pick) => useLocationStore.getState().setLocation(pick) },
     )
     // Apply visibility chosen before creation.
     const { visibility, verticalExaggeration } = useViewerStore.getState()

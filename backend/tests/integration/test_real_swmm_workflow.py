@@ -88,6 +88,17 @@ def test_real_swmm_simulations_run_isolated_and_reproduce_candidate_results(make
             recs = client.get(f"{API}/simulations/{sid}/recommendations").json()
             assert recs["recommendations"][0]["id"] == "rec-r1-C169"
 
+            # location-check-v1 on the real run: next to a node overflowing at the peak timestamp.
+            node = next(f for f in client.get(peak["asset"]["url"]).json()["features"] if f["properties"]["featureType"] == "node" and f["properties"]["state"] == "FLOODING")
+            lon, lat = node["geometry"]["coordinates"]
+            check = client.post(f"{API}/simulations/{sid}/location-check", json={"latitude": lat + 0.0001, "longitude": lon + 0.0001})
+            assert check.status_code == 200, check.text
+            body = check.json()
+            assert body["nearestNode"]["nodeId"] == node["properties"]["nodeId"]
+            assert body["response"]["code"] == "OVERFLOW_AT_NEAREST_NODE"
+            assert body["nearestNode"]["response"]["peakOverflowRateCms"] >= node["properties"]["floodingRateCms"]
+            assert body["groundFloodDepthM"] is None
+
         # Separate workspaces, identical deterministic results.
         assert settings.workdir / ids[0] != settings.workdir / ids[1]
         a, b = (container.results.results.read(sid, "results.json") for sid in ids)

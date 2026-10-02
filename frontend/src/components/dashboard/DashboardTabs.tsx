@@ -6,6 +6,7 @@ import { ExposurePanel } from '../decision/ExposurePanel'
 import { HydraulicsPanel } from '../decision/HydraulicsPanel'
 import { RecommendationsPanel } from '../decision/RecommendationsPanel'
 import { FloodPanel } from '../flood/FloodPanel'
+import { LocationPanel } from '../location/LocationPanel'
 
 const TABS: { id: DashboardTab; label: string }[] = [
   { id: 'flood', label: 'Flood' },
@@ -13,6 +14,7 @@ const TABS: { id: DashboardTab; label: string }[] = [
   { id: 'exposure', label: 'Exposure' },
   { id: 'actions', label: 'Actions' },
   { id: 'compare', label: 'Compare' },
+  { id: 'location', label: 'Location' },
 ]
 
 /** Decision-support panels. Switching tabs only changes React panels; the Cesium viewer is untouched. */
@@ -54,6 +56,7 @@ export function DashboardTabs() {
           {tab === 'exposure' && <ExposurePanel />}
           {tab === 'actions' && <RecommendationsPanel />}
           {tab === 'compare' && <ComparisonPanel />}
+          {tab === 'location' && <LocationPanel />}
         </ErrorBoundary>
       </div>
     </section>

@@ -20,6 +20,7 @@ from app.services.comparison_service import ComparisonService
 from app.services.gis_service import GisService
 from app.services.flood_service import FloodProductStore, FloodService
 from app.services.health_service import HealthService
+from app.services.location_service import LocationService
 from app.services.result_service import ResultService
 from app.services.scenario_service import ScenarioService
 from app.services.timeseries_service import TimeseriesService
@@ -67,6 +68,7 @@ class Container:
     decision: DecisionService
     demo: DemoService
     comparisons: ComparisonService
+    location: LocationService
     timeseries: TimeseriesService
     health: HealthService
     executor: SimulationExecutor
@@ -112,6 +114,7 @@ class Container:
             decision=decision,
             demo=DemoService(simulations, registry, result_store),
             comparisons=ComparisonService(settings, simulations, result_store, results, flood, decision),
+            location=LocationService(settings, registry, workspaces, flood, decision),
             timeseries=TimeseriesService(simulations, workspaces, model_ctx.mapping),
             health=HealthService(settings, registry, engine, builder),
             executor=executor,

@@ -26,6 +26,13 @@ export const FLOOD_CLASS_COLORS: Record<string, string> = {
 }
 export const SURCHARGED_COLOR = '#f59e0b'
 
+/** Location Flood Check pin and surrounding-area disc (distinct from flood, bottleneck and focus colours). */
+export const LOCATION_COLORS = {
+  pin: '#e879f9',
+  outside: '#94a3b8',
+  area: '#e879f9',
+}
+
 export function floodCss(state: string, overflowClass: string | null): string {
   return state === 'FLOODING' ? FLOOD_CLASS_COLORS[overflowClass ?? 'LOW'] ?? FLOOD_CLASS_COLORS.LOW : SURCHARGED_COLOR
 }

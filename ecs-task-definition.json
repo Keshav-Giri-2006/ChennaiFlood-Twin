@@ -1,0 +1,90 @@
+{
+    "taskRoleArn":  "arn:aws:iam::312957453375:role/ChennaiFloodECSTaskRole",
+    "networkMode":  "awsvpc",
+    "cpu":  "1024",
+    "ephemeralStorage":  {
+                             "sizeInGiB":  21
+                         },
+    "memory":  "2048",
+    "executionRoleArn":  "arn:aws:iam::312957453375:role/ChennaiFloodECSExecutionRole",
+    "requiresCompatibilities":  [
+                                    "FARGATE"
+                                ],
+    "containerDefinitions":  [
+                                 {
+                                     "healthCheck":  {
+                                                         "retries":  3,
+                                                         "command":  [
+                                                                         "CMD-SHELL",
+                                                                         "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen(\u0027http://127.0.0.1:8000/api/v1/health\u0027, timeout=4).status == 200 else 1)\""
+                                                                     ],
+                                                         "timeout":  5,
+                                                         "interval":  20,
+                                                         "startPeriod":  40
+                                                     },
+                                     "logConfiguration":  {
+                                                              "logDriver":  "awslogs",
+                                                              "options":  {
+                                                                              "awslogs-region":  "ap-south-1",
+                                                                              "awslogs-stream-prefix":  "backend",
+                                                                              "awslogs-group":  "/ecs/chennaiflood-twin-backend"
+                                                                          }
+                                                          },
+                                     "essential":  true,
+                                     "name":  "backend",
+                                     "environment":  [
+                                                         {
+                                                             "value":  "container",
+                                                             "name":  "APP_ENV"
+                                                         },
+                                                         {
+                                                             "value":  "INFO",
+                                                             "name":  "LOG_LEVEL"
+                                                         },
+                                                         {
+                                                             "value":  "/app",
+                                                             "name":  "DATA_DIR"
+                                                         },
+                                                         {
+                                                             "value":  "/app/runtime",
+                                                             "name":  "RUNTIME_DIR"
+                                                         },
+                                                         {
+                                                             "value":  "/opt/swmm/bin/runswmm",
+                                                             "name":  "SWMM_EXECUTABLE"
+                                                         },
+                                                         {
+                                                             "value":  "1",
+                                                             "name":  "SIMULATION_MAX_CONCURRENT"
+                                                         },
+                                                         {
+                                                             "value":  "900",
+                                                             "name":  "SWMM_TIMEOUT_SECONDS"
+                                                         },
+                                                         {
+                                                             "value":  "http://localhost:8080",
+                                                             "name":  "CORS_ALLOW_ORIGINS"
+                                                         },
+                                                         {
+                                                             "value":  "ap-south-1",
+                                                             "name":  "AWS_REGION"
+                                                         }
+                                                     ],
+                                     "portMappings":  [
+                                                          {
+                                                              "containerPort":  8000,
+                                                              "protocol":  "tcp",
+                                                              "hostPort":  8000
+                                                          }
+                                                      ],
+                                     "secrets":  [
+                                                     {
+                                                         "valueFrom":  "arn:aws:secretsmanager:ap-south-1:312957453375:secret:chennaiflood/rds/postgres-GWxmM9",
+                                                         "name":  "DATABASE_URL"
+                                                     }
+                                                 ],
+                                     "image":  "312957453375.dkr.ecr.ap-south-1.amazonaws.com/chennaiflood-twin-backend:latest"
+                                 }
+                             ],
+    "family":  "chennaiflood-backend"
+}

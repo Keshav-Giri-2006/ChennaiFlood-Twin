@@ -14,6 +14,7 @@ import type {
   FloodSummary,
   FloodTimeline,
   KpiResponse,
+  LocationCheck,
   ScenarioDetail,
   ScenarioListItem,
   SimulationCreated,
@@ -104,6 +105,17 @@ export const decisionApi = {
   },
   async recommendations(simulationId: string, signal?: AbortSignal): Promise<RecommendationList> {
     return requireFields<RecommendationList>(await apiRequest(`/simulations/${enc(simulationId)}/recommendations`, { signal }), ['recommendations', 'summary', 'rules'], 'Recommendations')
+  },
+}
+
+/** Location Flood Check: spatial query over a completed simulation (backend-computed, location-check-v1). */
+export const locationApi = {
+  async check(simulationId: string, location: { latitude: number; longitude: number; radiusMeters?: number }, signal?: AbortSignal): Promise<LocationCheck> {
+    return requireFields<LocationCheck>(
+      await apiRequest(`/simulations/${enc(simulationId)}/location-check`, { method: 'POST', body: location, signal }),
+      ['location', 'response', 'nearestNode', 'surroundingArea', 'nodes'],
+      'Location flood check',
+    )
   },
 }
 

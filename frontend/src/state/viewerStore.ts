@@ -16,7 +16,7 @@ export type LayerKey =
   | 'exposureRoads'
   | 'comparison'
 export type LayerLoadState = 'idle' | 'loading' | 'ready' | 'error'
-export type DashboardTab = 'flood' | 'hydraulics' | 'exposure' | 'actions' | 'compare'
+export type DashboardTab = 'flood' | 'hydraulics' | 'exposure' | 'actions' | 'compare' | 'location'
 export type ExposureScopeChoice = 'timestamp' | 'event'
 
 export interface SelectedFeature {
